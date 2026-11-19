@@ -199,7 +199,7 @@
   .section-intro { margin-top: 5px; font-size: 12px; line-height: 18px; color: #9aa0a8; }
   .cards { display: flex; flex-direction: column; gap: 6px; padding: 11px 0 10px; flex: 1; }
   .card {
-    height: 52px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px;
+    height: 46px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px;
     background: #232326; border: 1px solid rgba(255, 255, 255, .07); border-radius: 10px;
   }
   .card-ico { width: 32px; height: 32px; flex: none; border-radius: 8px; background: rgba(86, 134, 254, .12); display: flex; align-items: center; justify-content: center; }
@@ -294,10 +294,10 @@
   </div>
   <div class="headline">
     <h1>给 DSH 加上 NEVSTOP-LAB 的手感</h1>
-    <p>7 项定制，每项一个开关；图上用图标和编号标出改动位置。入口：<span class="accent">设置 → NEVSTOP-LAB</span></p>
+    <p>8 项定制，每项一个开关；图上用图标和编号标出改动位置。入口：<span class="accent">设置 → NEVSTOP-LAB</span></p>
   </div>
   <div class="head-pills">
-    <span class="pill hot">7 项独立开关</span>
+    <span class="pill hot">8 项独立开关</span>
     <span class="pill">DSH ≥ 0.2.1</span>
     <span class="pill">MIT</span>
   </div>
@@ -492,13 +492,21 @@
           </span>
           <span class="toggle"></span>
         </div>
-        <div class="card hl">
+        <div class="card">
           <span class="card-ico"><img src="../icons/machine.svg" alt=""></span>
           <span class="card-text">
             <span class="card-title">本机标识</span>
             <span class="card-desc">左侧栏底部显示 DESKTOP-9K2F · 浏览器标签页标题带同一前缀</span>
           </span>
           <span class="card-actions"><span class="gear"><svg class="ui"><use href="#i-gear"/></svg></span><span class="toggle"></span></span>
+        </div>
+        <div class="card hl">
+          <span class="card-ico"><img src="../icons/queue.svg" alt=""></span>
+          <span class="card-text">
+            <span class="card-title">排队消息默认展开</span>
+            <span class="card-desc">排队发送的面板默认展开列出，之后手动展开/收起照旧</span>
+          </span>
+          <span class="toggle"></span>
         </div>
       </div>
 
@@ -516,7 +524,8 @@
     <path d="M1457 822 L1457 862"/>
     <path d="M356 266 L298 242"/>
     <path d="M356 420 L300 420"/>
-    <path d="M1242 654 L1212 654"/>
+    <path d="M1242 624 L1212 624"/>
+    <path d="M406 740 L446 740"/>
     <path d="M1261 826 L1261 862"/>
     <path d="M356 790 L302 866"/>
   </g>
@@ -525,7 +534,8 @@
     <circle cx="1457" cy="864" r="3.2"/>
     <circle cx="296" cy="241" r="3.2"/>
     <circle cx="298" cy="420" r="3.2"/>
-    <circle cx="1210" cy="654" r="3.2"/>
+    <circle cx="1210" cy="624" r="3.2"/>
+    <circle cx="448" cy="740" r="3.2"/>
     <circle cx="1261" cy="864" r="3.2"/>
     <circle cx="300" cy="866" r="3.2"/>
   </g>
@@ -535,9 +545,10 @@
 <div class="pin" style="left:1437px;top:802px"><img src="../icons/keys.svg" alt=""><span class="n">2</span></div>
 <div class="pin" style="left:336px;top:246px"><img src="../icons/sidebar.svg" alt=""><span class="n">3</span></div>
 <div class="pin" style="left:336px;top:400px"><img src="../icons/sessions.svg" alt=""><span class="n">4</span></div>
-<div class="pin" style="left:1242px;top:634px"><img src="../icons/model.svg" alt=""><span class="n">5</span></div>
+<div class="pin" style="left:1242px;top:604px"><img src="../icons/model.svg" alt=""><span class="n">5</span></div>
 <div class="pin" style="left:1241px;top:786px"><img src="../icons/balance.svg" alt=""><span class="n">6</span></div>
 <div class="pin" style="left:336px;top:770px"><img src="../icons/machine.svg" alt=""><span class="n">7</span></div>
+<div class="pin" style="left:366px;top:720px"><img src="../icons/queue.svg" alt=""><span class="n">8</span></div>
 
 <div class="legend">
   <span class="lg-label">改动清单</span>
@@ -548,6 +559,7 @@
   <span class="lg-item"><span class="lg-num">5</span><img class="lg-ico" src="../icons/model.svg" alt=""><span class="lg-text">新会话默认模型</span></span>
   <span class="lg-item"><span class="lg-num">6</span><img class="lg-ico" src="../icons/balance.svg" alt=""><span class="lg-text">余额圆环</span></span>
   <span class="lg-item"><span class="lg-num">7</span><img class="lg-ico" src="../icons/machine.svg" alt=""><span class="lg-text">本机标识</span></span>
+  <span class="lg-item"><span class="lg-num">8</span><img class="lg-ico" src="../icons/queue.svg" alt=""><span class="lg-text">排队消息默认展开</span></span>
 </div>
 
 <div class="mock-note">界面为示意图 · 实际效果以插件为准</div>
