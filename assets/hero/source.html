@@ -169,6 +169,36 @@
   }
   .send .ui { width: 12px; height: 12px; }
 
+  /* ---------- dashboard behind the settings dialog ---------- */
+  .dash-page { position: absolute; inset: 0 0 126px; display: flex; flex-direction: column; background: #151517; }
+  .dash-head { height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+  .dash-head-title { font-size: 12.5px; font-weight: 600; color: #e8eaee; letter-spacing: .02em; }
+  .dash-meta { font-size: 10.5px; color: #8b9099; }
+  .dash-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: #767c85; }
+  .dash-close { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: #7d838c; }
+  .dash-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
+  .dash-cell { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid rgba(255, 255, 255, .1); border-radius: 10px; background: #1b1b1f; box-shadow: 0 2px 8px rgba(0, 0, 0, .32); }
+  .dash-cell.current { border-color: #4176e6; box-shadow: 0 0 0 1px #4176e6, 0 2px 8px rgba(0, 0, 0, .32); }
+  .dash-cell-head { height: 28px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid rgba(255, 255, 255, .07); background: rgba(255, 255, 255, .035); }
+  .dash-cell.current .dash-cell-head { background: transparent; }
+  .dash-cell.accent-blue .dash-cell-head { background: rgba(86, 134, 254, .18); }
+  .dash-cell.accent-green .dash-cell-head { background: rgba(62, 207, 142, .14); }
+  .dash-cell.accent-amber .dash-cell-head { background: rgba(245, 165, 36, .14); }
+  .dash-cell-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: #dfe3e9; }
+  .dash-cell-head .dot { width: 6px; height: 6px; margin-top: 0; }
+  .dash-badge { flex: none; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, .07); color: #aeb4bd; font-size: 9.5px; line-height: 14px; }
+  .dash-cell-body { flex: 1; min-height: 0; overflow: hidden; padding: 8px 10px; color: #8f959e; font-size: 10.5px; line-height: 16px; }
+  .dash-tool { display: flex; gap: 6px; align-items: center; margin: 0 0 4px; color: #9aa0a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dash-tool::before { content: ""; width: 9px; height: 9px; border: 1px solid #5f6670; border-radius: 3px; flex: none; }
+  .dash-msg { margin: 4px 0 6px; padding: 6px 8px; border: 1px solid rgba(255, 255, 255, .06); border-radius: 8px; background: #232326; color: #c3c8cf; }
+  .dash-note { margin: 4px 0 6px; padding: 7px 8px; border-radius: 8px; border: 1px solid rgba(245, 165, 36, .26); background: rgba(245, 165, 36, .08); color: #e6c58a; font-size: 10px; line-height: 15px; }
+  .dash-edit { margin-top: 5px; padding: 6px 8px; border: 1px solid rgba(255, 255, 255, .06); border-radius: 8px; background: #202023; color: #9aa0a8; }
+  .dash-edit .plus { color: #6fd39a; }
+  .dash-edit .minus { color: #e08a8a; }
+  .dash-table { margin: 5px 0; border-top: 1px solid rgba(255, 255, 255, .07); border-bottom: 1px solid rgba(255, 255, 255, .07); font-size: 9.5px; color: #9aa0a8; }
+  .dash-table > div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, .045); }
+  .dash-table > div:first-child { border-top: 0; color: #c3c8cf; }
+
   /* ---------- settings dialog ---------- */
   .settings {
     position: absolute; left: 450px; top: 236px; width: 780px; height: 590px; z-index: 30;
@@ -393,19 +423,67 @@
     </aside>
 
     <main class="main">
-      <div class="topbar">
-        <div class="topbar-left">
-          <span class="live"></span>
-          <span>README 头图与功能图标</span>
-          <span class="branch">feat/readme-hero</span>
+      <div class="dash-page">
+        <div class="dash-head">
+          <span class="dash-head-title">活跃会话 Dashboard</span>
+          <span class="dash-meta">2 × 2 · 90%</span>
+          <span class="dash-hint">单击格子切换下方输入，双击标题退出并进入该会话</span>
+          <span class="dash-close">×</span>
         </div>
-        <div class="topbar-right">
-          <span class="win-btn"><svg class="ui"><use href="#i-panel"/></svg></span>
-          <span class="win-btn"><svg class="ui"><use href="#i-share"/></svg></span>
-          <span class="win-btn"><svg class="ui"><use href="#i-more"/></svg></span>
+        <div class="dash-grid">
+          <section class="dash-cell current">
+            <div class="dash-cell-head">
+              <span class="dot run"></span>
+              <span class="dash-cell-title">README 头图与功能图标</span>
+              <span class="dash-badge">当前</span>
+            </div>
+            <div class="dash-cell-body">
+              <div class="dash-tool">运行命令 · npm run hero</div>
+              <div class="dash-msg">头图已更新：3200 × 2000</div>
+              <div class="dash-tool">读取 assets/hero/source.html</div>
+              <div class="dash-tool">编辑 README.md</div>
+              <div class="dash-edit">已编辑 3 个文件 <span class="plus">+24</span> <span class="minus">-8</span></div>
+            </div>
+          </section>
+          <section class="dash-cell accent-blue">
+            <div class="dash-cell-head">
+              <span class="dot wait"></span>
+              <span class="dash-cell-title">调研 百度网盘的开放平台，以</span>
+            </div>
+            <div class="dash-cell-body">
+              <div class="dash-note"><b>两个遗留项</b><br>插件仓库还没 star 进 deepseek-awesome 列表…</div>
+              <div class="dash-msg">官方只保留网盘，匿名直接下载会被拒绝…</div>
+              <div class="dash-edit">已编辑 4 个文件 <span class="plus">+81</span> <span class="minus">-20</span></div>
+            </div>
+          </section>
+          <section class="dash-cell accent-green">
+            <div class="dash-cell-head">
+              <span class="dot done"></span>
+              <span class="dash-cell-title">树莓派4初始化配置</span>
+            </div>
+            <div class="dash-cell-body">
+              <div class="dash-msg">散热策略 · 空载 39–47°C，无风扇，长期高负载怎么处理</div>
+              <div class="dash-table">
+                <div><span>#35</span><span>In Progress</span></div>
+                <div><span>#14 / #21</span><span>Blocked</span></div>
+                <div><span>#13</span><span>In Progress</span></div>
+              </div>
+              <div class="dash-note">注意：第二类里，前两条其实是 #62 落地前必须回答的…</div>
+            </div>
+          </section>
+          <section class="dash-cell accent-amber">
+            <div class="dash-cell-head">
+              <span class="dot done"></span>
+              <span class="dash-cell-title">下载 nanopi NEO 带显示屏的套件</span>
+            </div>
+            <div class="dash-cell-body">
+              <div class="dash-msg">官方只保留网盘，匿名直接下载会被拒绝…</div>
+              <div class="dash-note">DietPi 与 OpenWrt 都不带 NanoHat OLED 驱动…</div>
+              <div class="dash-msg">烧写方式：DietPi 的 .xz 解压成 .img，再用 balenaEtcher…</div>
+            </div>
+          </section>
         </div>
       </div>
-      <div class="chat-area"></div>
 
       <div class="composer">
         <div class="c-input">让 DSH 更贴近 NEVSTOP-LAB 的日常…</div>
