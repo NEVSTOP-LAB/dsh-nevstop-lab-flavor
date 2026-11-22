@@ -174,6 +174,8 @@
   .dash-head { height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
   .dash-head-title { font-size: 12.5px; font-weight: 600; color: #e8eaee; letter-spacing: .02em; }
   .dash-meta { font-size: 10.5px; color: #8b9099; }
+  .dash-scale { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; background: rgba(255,255,255,.055); color: #cfd3d6; font-size: 10.5px; }
+  .dash-scale .chev { font-size: 8px; color: #8b9099; }
   .dash-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: #767c85; }
   .dash-close { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: #7d838c; }
   .dash-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
@@ -427,7 +429,8 @@
       <div class="dash-page">
         <div class="dash-head">
           <span class="dash-head-title">活跃会话 Dashboard</span>
-          <span class="dash-meta">2 × 2 · 90%</span>
+          <span class="dash-meta">2 × 2</span>
+          <span class="dash-scale">90%<span class="chev">▾</span></span>
           <span class="dash-hint">单击格子切换下方输入，双击标题退出并进入该会话</span>
           <span class="dash-close">×</span>
         </div>
@@ -563,7 +566,7 @@
           <span class="card-ico"><img src="../icons/sessions.svg" alt=""></span>
           <span class="card-text">
             <span class="card-title">活跃会话区<span class="dash-pill"><svg class="ui"><use href="#i-grid"/></svg>Dashboard</span></span>
-            <span class="card-desc">12 小时内活跃 · 标题旁 Dashboard 按钮 · 2 × 2 同屏预览 · 默认 90% 缩放</span>
+            <span class="card-desc">12 小时内活跃 · Dashboard 按钮 · 2 × 2 预览 · 显示比例 90% 可调</span>
           </span>
           <span class="card-actions"><span class="gear"><svg class="ui"><use href="#i-gear"/></svg></span><span class="toggle"></span></span>
         </div>
