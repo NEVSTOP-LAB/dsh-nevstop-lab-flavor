@@ -200,6 +200,7 @@
   .dash-table > div:first-child { border-top: 0; color: #c3c8cf; }
 
   /* ---------- settings dialog ---------- */
+  .settings-cluster { position: absolute; inset: 0; z-index: 30; pointer-events: none; transform: translate(65px, 88px) scale(.9); transform-origin: 0 0; }
   .settings {
     position: absolute; left: 450px; top: 236px; width: 780px; height: 590px; z-index: 30;
     background: #1c1c20; border: 1px solid rgba(255, 255, 255, .13); border-radius: 16px; overflow: hidden;
@@ -453,6 +454,8 @@
             <div class="dash-cell-body">
               <div class="dash-note"><b>两个遗留项</b><br>插件仓库还没 star 进 deepseek-awesome 列表…</div>
               <div class="dash-msg">官方只保留网盘，匿名直接下载会被拒绝…</div>
+              <div class="dash-msg">已核对 GitHub release 与校验和，windows-amd64 可用。</div>
+              <div class="dash-tool">执行命令 · gh release view</div>
               <div class="dash-edit">已编辑 4 个文件 <span class="plus">+81</span> <span class="minus">-20</span></div>
             </div>
           </section>
@@ -480,6 +483,8 @@
               <div class="dash-msg">官方只保留网盘，匿名直接下载会被拒绝…</div>
               <div class="dash-note">DietPi 与 OpenWrt 都不带 NanoHat OLED 驱动…</div>
               <div class="dash-msg">烧写方式：DietPi 的 .xz 解压成 .img，再用 balenaEtcher…</div>
+              <div class="dash-msg">已下载并核对 sha256sums，镜像通过校验。</div>
+              <div class="dash-tool">执行命令 · sha256sum -c</div>
             </div>
           </section>
         </div>
@@ -507,6 +512,7 @@
   </div>
 </div>
 
+<div class="settings-cluster">
 <div class="settings">
   <div class="settings-head">
     <span class="settings-title">设置</span>
@@ -634,6 +640,7 @@
 <div class="pin" style="left:1241px;top:786px"><img src="../icons/balance.svg" alt=""><span class="n">6</span></div>
 <div class="pin" style="left:336px;top:770px"><img src="../icons/machine.svg" alt=""><span class="n">7</span></div>
 <div class="pin" style="left:366px;top:720px"><img src="../icons/queue.svg" alt=""><span class="n">8</span></div>
+</div>
 
 <div class="legend">
   <span class="lg-label">改动清单</span>
