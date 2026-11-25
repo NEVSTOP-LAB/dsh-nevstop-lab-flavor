@@ -173,20 +173,22 @@
   .dash-page { position: absolute; inset: 0 0 126px; display: flex; flex-direction: column; background: #151517; }
   .dash-head { height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
   .dash-head-title { font-size: 12.5px; font-weight: 600; color: #e8eaee; letter-spacing: .02em; }
-  .dash-meta { font-size: 10.5px; color: #8b9099; }
-  .dash-scale { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; background: rgba(255,255,255,.055); color: #cfd3d6; font-size: 10.5px; }
-  .dash-scale .chev { font-size: 8px; color: #8b9099; }
   .dash-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: #767c85; }
+  .dash-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; flex: none; }
+  .dash-select { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border: 1px solid rgba(255,255,255,.14); border-radius: 7px; background: rgba(255,255,255,.055); color: #cfd3d6; font-size: 10.5px; }
+  .dash-select .chev { font-size: 8px; color: #8b9099; }
   .dash-close { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: #7d838c; }
   .dash-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
   .dash-cell { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid rgba(255, 255, 255, .1); border-radius: 10px; background: #1b1b1f; box-shadow: 0 2px 8px rgba(0, 0, 0, .32); }
   .dash-cell.current { border-color: #4176e6; box-shadow: 0 0 0 1px #4176e6, 0 2px 8px rgba(0, 0, 0, .32); }
-  .dash-cell-head { height: 28px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid rgba(255, 255, 255, .07); background: rgba(255, 255, 255, .035); }
+  .dash-cell-head { height: 34px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid rgba(255, 255, 255, .07); background: rgba(255, 255, 255, .035); }
   .dash-cell.current .dash-cell-head { background: transparent; }
   .dash-cell.accent-blue .dash-cell-head { background: rgba(86, 134, 254, .18); }
   .dash-cell.accent-green .dash-cell-head { background: rgba(62, 207, 142, .14); }
   .dash-cell.accent-amber .dash-cell-head { background: rgba(245, 165, 36, .14); }
   .dash-cell-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: #dfe3e9; }
+  .dash-team-chip { flex: none; padding: 0 6px; border-radius: 999px; background: rgba(255, 255, 255, .07); color: #8b9099; font-size: 9.5px; line-height: 15px; white-space: nowrap; }
+  .dash-team-chip.active { color: #8fb0ff; background: rgba(86, 134, 254, .14); }
   .dash-cell-head .dot { width: 6px; height: 6px; margin-top: 0; }
   .dash-badge { flex: none; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, .07); color: #aeb4bd; font-size: 9.5px; line-height: 14px; }
   .dash-cell-body { flex: 1; min-height: 0; overflow: hidden; padding: 8px 10px; color: #8f959e; font-size: 10.5px; line-height: 16px; }
@@ -197,6 +199,20 @@
   .dash-edit { margin-top: 5px; padding: 6px 8px; border: 1px solid rgba(255, 255, 255, .06); border-radius: 8px; background: #202023; color: #9aa0a8; }
   .dash-edit .plus { color: #6fd39a; }
   .dash-edit .minus { color: #e08a8a; }
+  .dash-cell.new-task .dash-new-head { height: 34px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid rgba(255, 255, 255, .07); font-size: 12px; }
+  .dash-new-plus { width: 14px; height: 14px; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.07); color: #aeb4bd; font-size: 12px; line-height: 1; }
+  .dash-new-title { font-weight: 600; color: #dfe3e9; }
+  .dash-new-where { margin-left: auto; font-size: 10.5px; color: #767c85; }
+  .dash-new-body { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 8px 10px; }
+  .dash-new-workspace { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: #cfd3d6; }
+  .dash-new-workspace .ui { width: 13px; height: 13px; color: #8b9099; }
+  .dash-new-mode { margin-left: 4px; color: #8b9099; font-size: 10px; }
+  .dash-new-composer { border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: #1f1f23; padding: 8px 9px 7px; }
+  .dash-new-placeholder { min-height: 30px; font-size: 10.5px; line-height: 15px; color: #767c85; }
+  .dash-new-controls { display: flex; align-items: center; gap: 7px; font-size: 9.5px; color: #8b9099; }
+  .dash-new-icon { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.07); color: #aeb4bd; font-size: 11px; line-height: 1; }
+  .dash-new-model { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cfd3d6; }
+  .dash-new-send { margin-left: 2px; height: 20px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px; background: #4176e6; color: #fff; font-size: 10px; font-weight: 500; }
   .dash-table { margin: 5px 0; border-top: 1px solid rgba(255, 255, 255, .07); border-bottom: 1px solid rgba(255, 255, 255, .07); font-size: 9.5px; color: #9aa0a8; }
   .dash-table > div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, .045); }
   .dash-table > div:first-child { border-top: 0; color: #c3c8cf; }
@@ -429,16 +445,19 @@
       <div class="dash-page">
         <div class="dash-head">
           <span class="dash-head-title">活跃会话 Dashboard</span>
-          <span class="dash-meta">2 × 2</span>
-          <span class="dash-scale">90%<span class="chev">▾</span></span>
           <span class="dash-hint">单击格子切换下方输入，双击标题退出并进入该会话</span>
-          <span class="dash-close">×</span>
+          <div class="dash-controls">
+            <span class="dash-select">90%<span class="chev">▾</span></span>
+            <span class="dash-select">2 × 2<span class="chev">▾</span></span>
+            <span class="dash-close">×</span>
+          </div>
         </div>
         <div class="dash-grid">
           <section class="dash-cell current">
             <div class="dash-cell-head">
               <span class="dot run"></span>
               <span class="dash-cell-title">README 头图与功能图标</span>
+              <span class="dash-team-chip active">Agent 2 · 活跃 1</span>
               <span class="dash-badge">当前</span>
             </div>
             <div class="dash-cell-body">
@@ -453,6 +472,7 @@
             <div class="dash-cell-head">
               <span class="dot wait"></span>
               <span class="dash-cell-title">调研 百度网盘的开放平台，以</span>
+              <span class="dash-team-chip">Agent 1 · 活跃 0</span>
             </div>
             <div class="dash-cell-body">
               <div class="dash-note"><b>两个遗留项</b><br>插件仓库还没 star 进 deepseek-awesome 列表…</div>
@@ -466,6 +486,7 @@
             <div class="dash-cell-head">
               <span class="dot done"></span>
               <span class="dash-cell-title">树莓派4初始化配置</span>
+              <span class="dash-team-chip">Agent 0 · 活跃 0</span>
             </div>
             <div class="dash-cell-body">
               <div class="dash-msg">散热策略 · 空载 39–47°C，无风扇，长期高负载怎么处理</div>
@@ -477,17 +498,27 @@
               <div class="dash-note">注意：第二类里，前两条其实是 #62 落地前必须回答的…</div>
             </div>
           </section>
-          <section class="dash-cell accent-amber">
-            <div class="dash-cell-head">
-              <span class="dot done"></span>
-              <span class="dash-cell-title">下载 nanopi NEO 带显示屏的套件</span>
+          <section class="dash-cell new-task">
+            <div class="dash-new-head">
+              <span class="dash-new-plus">＋</span>
+              <span class="dash-new-title">新建任务</span>
+              <span class="dash-new-where">NEVSTOP-LAB</span>
             </div>
-            <div class="dash-cell-body">
-              <div class="dash-msg">官方只保留网盘，匿名直接下载会被拒绝…</div>
-              <div class="dash-note">DietPi 与 OpenWrt 都不带 NanoHat OLED 驱动…</div>
-              <div class="dash-msg">烧写方式：DietPi 的 .xz 解压成 .img，再用 balenaEtcher…</div>
-              <div class="dash-msg">已下载并核对 sha256sums，镜像通过校验。</div>
-              <div class="dash-tool">执行命令 · sha256sum -c</div>
+            <div class="dash-new-body">
+              <div class="dash-new-workspace">
+                <svg class="ui" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h4l1.8 2h7.2A1.5 1.5 0 0 1 20 9.5v7A1.5 1.5 0 0 1 18.5 18h-13A1.5 1.5 0 0 1 4 16.5Z"/></svg>
+                <span>NEVSTOP-LAB</span>
+                <span class="dash-new-mode">标准模式</span>
+              </div>
+              <div class="dash-new-composer">
+                <div class="dash-new-placeholder">描述你想要构建的内容，/ 调用指令，@ 文件或对话</div>
+                <div class="dash-new-controls">
+                  <span class="dash-new-icon">＋</span>
+                  <span>默认审批</span>
+                  <span class="dash-new-model">opencode-go · DeepSeek V4.1 Flash Default</span>
+                  <span class="dash-new-send">发送</span>
+                </div>
+              </div>
             </div>
           </section>
         </div>
