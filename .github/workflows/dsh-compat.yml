@@ -47,6 +47,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      # 零依赖插件没有 lock 文件，setup-node 的 cache: npm 会直接报错退出
       - run: npm install --no-audit --no-fund --ignore-scripts
       - run: npm run check --if-present
       - run: npm test --if-present
@@ -59,10 +60,11 @@ jobs:
       fail-fast: false
       matrix:
         dsh: ${{ fromJson(needs.prepare.outputs.versions) }}
-    env:
-      DSH_HOME: ${{ runner.temp }}/dsh-home
     steps:
       - uses: actions/checkout@v4
+      # job 级 env 不能用 runner 上下文，DSH_HOME 只能在 step 里导出
+      - name: Set DSH_HOME
+        run: echo "DSH_HOME=$RUNNER_TEMP/dsh-home" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
