@@ -101,17 +101,59 @@ jobs:
           grep -q "$(node -p "require('./package.json').name")" composed.yml
 
       - name: Provide the host peers the plugin declares
-        # 插件把宿主包声明为 optional peer，隔离 profile 里没有宿主包，import 冒烟会找不到；
-        # 按被测 DSH 版本自带的依赖版本补齐这些 peer
+        # 插件把宿主包声明为 optional peer，隔离 profile 里没有宿主包，import 冒烟会找不到。
+        # 宿主直接依赖的直接取宿主版本；只被宿主更深层依赖的（如 dsh-typert-protocol）从
+        # 本次被测版本对应的那份 npx 安装树里取，取不到再按插件声明范围解析。
+        # 必须按 @deepseek-ai/dsh 的版本定位那份安装树：npx 缓存里有多个宿主版本。
+        env:
+          DSH_VERSION: ${{ matrix.dsh }}
         run: |
           npm view @deepseek-ai/dsh@${{ matrix.dsh }} dependencies --json > host-deps.json
           node -e '
             const fs = require("fs")
+            const path = require("path")
+            const os = require("os")
+            const { execSync } = require("child_process")
             const host = JSON.parse(fs.readFileSync("host-deps.json", "utf8"))
             const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"))
-            const specs = Object.keys(pkg.peerDependencies || {})
-              .filter((n) => host[n])
-              .map((n) => `${n}@${String(host[n]).replace(/^[~^]/, "")}`)
+            const npxRoot = path.join(os.homedir(), ".npm", "_npx")
+            const strip = (v) => String(v).replace(/^[~^]/, "")
+            function hostInstallDir() {
+              let dirs = []
+              try { dirs = fs.readdirSync(npxRoot, { withFileTypes: true }).filter((e) => e.isDirectory()) } catch { return null }
+              for (const entry of dirs) {
+                const manifest = path.join(npxRoot, entry.name, "node_modules", "@deepseek-ai", "dsh", "package.json")
+                try {
+                  if (JSON.parse(fs.readFileSync(manifest, "utf8")).version === process.env.DSH_VERSION) {
+                    return path.join(npxRoot, entry.name)
+                  }
+                } catch {}
+              }
+              return null
+            }
+            function installedByHost(name) {
+              const dir = hostInstallDir()
+              if (!dir) return null
+              const suffix = path.join("node_modules", ...name.split("/"), "package.json")
+              let entries = []
+              try { entries = fs.readdirSync(dir, { recursive: true }).map(String) } catch { return null }
+              for (const entry of entries) {
+                if (!entry.endsWith(suffix)) continue
+                try { return JSON.parse(fs.readFileSync(path.join(dir, entry), "utf8")).version } catch {}
+              }
+              return null
+            }
+            function fromRegistry(name, range) {
+              const out = execSync(`npm view "${name}@${range}" version --json`, { encoding: "utf8" })
+              const value = JSON.parse(out)
+              return Array.isArray(value) ? value[value.length - 1] : value
+            }
+            const specs = []
+            for (const [name, range] of Object.entries(pkg.peerDependencies || {})) {
+              const version = host[name] ? strip(host[name]) : installedByHost(name) || fromRegistry(name, range)
+              specs.push(`${name}@${version}`)
+            }
+            console.log("host peers:", specs.join(" "))
             fs.writeFileSync("host-peers.txt", specs.join(" "))
           '
           specs=$(cat host-peers.txt)
