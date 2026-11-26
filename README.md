@@ -1,3 +1,6 @@
+> [!NOTE]
+> 兼容 DSH 0.2.x（`engines.dsh` 见 `package.json`）；实测 `0.2.1-rc.5`、`0.2.2-rc.5`（Linux CI 逐版本装载验证）。
+
 # dsh-nevstop-lab-flavor
 
 ![dsh-nevstop-lab-flavor 头图：DSH 界面中央打开 NEVSTOP-LAB 设置页，八项改动以带图标的 spotlight 标出](assets/hero.png)
@@ -36,10 +39,6 @@ dsh plugin --profile desktop add github:NEVSTOP-LAB/dsh-nevstop-lab-flavor
 ## 配置
 
 设置保存在 `%USERPROFILE%\.dsh\plugin-data\dsh-nevstop-lab-flavor\config.json`，也可以在设置页里直接改。
-
-## 兼容
-
-DSH `>=0.2.1-rc.0 <0.3.0-0`。
 
 ## 维护
 
