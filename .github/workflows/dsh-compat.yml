@@ -100,6 +100,23 @@ jobs:
           npx -y @deepseek-ai/dsh@${{ matrix.dsh }} --profile compat --dump-config | tee composed.yml
           grep -q "$(node -p "require('./package.json').name")" composed.yml
 
+      - name: Provide the host peers the plugin declares
+        # 插件把宿主包声明为 optional peer，隔离 profile 里没有宿主包，import 冒烟会找不到；
+        # 按被测 DSH 版本自带的依赖版本补齐这些 peer
+        run: |
+          npm view @deepseek-ai/dsh@${{ matrix.dsh }} dependencies --json > host-deps.json
+          node -e '
+            const fs = require("fs")
+            const host = JSON.parse(fs.readFileSync("host-deps.json", "utf8"))
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"))
+            const specs = Object.keys(pkg.peerDependencies || {})
+              .filter((n) => host[n])
+              .map((n) => `${n}@${String(host[n]).replace(/^[~^]/, "")}`)
+            fs.writeFileSync("host-peers.txt", specs.join(" "))
+          '
+          specs=$(cat host-peers.txt)
+          if [ -n "$specs" ]; then (cd "$DSH_HOME/profiles/compat" && pnpm add $specs); fi
+
       - name: Import the entry from the profile
         run: |
           name=$(node -p "require('./package.json').name")
