@@ -52,8 +52,21 @@ try {
     const parentAfter = afterAll.groups[0].items.find((item) => item.id === parent.id)
     check(parentAfter !== undefined && parentAfter.done === true, '子任务全勾后父项完成')
 
-    const parentToggle = await toggleMemoItem(session, parent.id, undefined)
-    check(parentToggle.ok === false && parentToggle.error === 'child-not-found', '父项不可单独勾选')
+    const parentBulkOff = await toggleMemoItem(session, parent.id, undefined)
+    check(parentBulkOff.ok === true, '父项可批量操作')
+    const afterBulkOff = await readMemo(session)
+    const parentBulkOffItem = afterBulkOff.groups[0].items.find((item) => item.id === parent.id)
+    check(
+      parentBulkOffItem !== undefined && parentBulkOffItem.done === false && parentBulkOffItem.children.every((child) => child.done === false),
+      '父项已全部完成时点击会清空所有子任务',
+    )
+    await toggleMemoItem(session, parent.id, undefined)
+    const afterBulkOn = await readMemo(session)
+    const parentBulkOnItem = afterBulkOn.groups[0].items.find((item) => item.id === parent.id)
+    check(
+      parentBulkOnItem !== undefined && parentBulkOnItem.done === true && parentBulkOnItem.children.every((child) => child.done === true),
+      '父项点击会勾上所有子任务',
+    )
   }
 
   const bread = await readMemo(session)
