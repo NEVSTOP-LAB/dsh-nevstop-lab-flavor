@@ -8,6 +8,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { addMemoItems, copyMemo, countMemo, readMemo, toggleMemoItem, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { extractCallouts } from '../../lib/memo/callouts.js'
 
 const home = join(process.cwd(), '.tmp', 'memo-verify')
 rmSync(home, { recursive: true, force: true })
@@ -80,6 +81,24 @@ try {
   check(traversal.groups.length === 0, '非法会话标识读取为空')
   const writeRejected = await writeMemo('../escape', { groups: [] }).then(() => false, () => true)
   check(writeRejected, '非法会话标识写入被拒')
+
+  const callouts = extractCallouts([
+    '今天改完了。',
+    '',
+    '> [!WARNING]',
+    '> 升级前先备份 profile。',
+    '> 第二步再刷新页面。',
+    '',
+    '> 普通引用不算 callout。',
+    '',
+    '> [!NOTE]',
+    '> 记得跑 check。',
+  ].join('\n'))
+  check(callouts.length === 2, '只提取 callout 块')
+  check(callouts[0] !== undefined && callouts[0].kind === 'WARNING', '识别 callout 类型')
+  check(callouts[0] !== undefined && callouts[0].text.includes('升级前先备份 profile'), '合并标题与正文')
+  check(callouts[0] !== undefined && callouts[0].text.includes('第二步再刷新页面'), '合并多行正文')
+  check(extractCallouts('没有 callout 的正文') .length === 0, '无 callout 时为空')
 } finally {
   rmSync(home, { recursive: true, force: true })
 }

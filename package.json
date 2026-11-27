@@ -56,7 +56,7 @@
     "dsh": ">=0.2.1-rc.0 <0.3.0-0"
   },
   "scripts": {
-    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/balance/index.js && node --check lib/balance/config.js && node --check lib/memo/index.js && node --check lib/memo/store.js && node --check lib/memo/route.js && node --check lib/memo/tool.js && node --check lib/memo/turn.js && node --check lib/memo/prompt.js && node --check scripts/hero/render.mjs && node scripts/icons/verify.mjs && node scripts/memo/verify.mjs",
+    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/balance/index.js && node --check lib/balance/config.js && node --check lib/memo/index.js && node --check lib/memo/store.js && node --check lib/memo/route.js && node --check lib/memo/tool.js && node --check lib/memo/turn.js && node --check lib/memo/prompt.js && node --check lib/memo/callouts.js && node --check scripts/hero/render.mjs && node scripts/icons/verify.mjs && node scripts/memo/verify.mjs",
     "hero": "node scripts/hero/render.mjs"
   },
   "peerDependencies": {
