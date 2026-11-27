@@ -203,6 +203,171 @@ try {
   check(merged.length === 2, '同一句的重复补充被合并')
   check(merged[0].text === '备份后再升级' && merged[1].text === '回归 check 脚本', '模型条目优先且保持顺序')
   check(mergeMemoItems([], [{ text: 'a' }, { text: 'b' }], 1).length === 1, '合并受上限约束')
+
+  const paraphrasedPair = mergeMemoItems(
+    [{ text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' }],
+    [{ text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。' }],
+  )
+  check(paraphrasedPair.length === 1, '换措辞的同一件事只留一条')
+  check(paraphrasedPair[0].text.includes('没接进 job 落盘'), '重复时保留信息更全的那条')
+
+  const structuredWins = mergeMemoItems(
+    [
+      { text: '作业现在依赖网页视图在跑：托盘先「打开网页视图」再启动网关，否则闸门报错' },
+      { text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events', callout: 'WARNING' },
+      { text: '托盘「启动网关」尚未自动拉起网页视图，现在是两步' },
+    ],
+    [
+      {
+        text: '还没做的',
+        children: [
+          { text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。' },
+          '托盘「启动网关」没有自动拉起网页视图，目前是两步操作。',
+        ],
+      },
+    ],
+  )
+  check(structuredWins.length === 2, '平铺条目被子任务清单吸收')
+  check(structuredWins[1] !== undefined && structuredWins[1].text === '还没做的', '带子任务的条目挪到最早重复位置')
+  check(structuredWins[1] !== undefined && structuredWins[1].children.length === 2, '保留带子任务的那条及其子任务')
+  check(structuredWins[1] !== undefined && structuredWins[1].callout === 'WARNING', '被吸收条目的 callout 类型转移到结构化条目')
+
+  const keptApart = mergeMemoItems(
+    [{ text: '托盘「打开网页视图」要手动点，没有开机自启' }],
+    [{ text: '托盘「启动网关」要手动点，没有开机自启' }],
+  )
+  check(keptApart.length === 2, '点名对象不同的条目不被合并')
+
+  const dedupeFirst = await addMemoItems('sess-dedupe', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' }],
+  })
+  const dedupeSecond = await addMemoItems('sess-dedupe', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。' }],
+  })
+  check(dedupeFirst.added === 1, '首次写入一条')
+  check(dedupeSecond.doc.groups[0].items.length === 1, '同一轮换措辞不新增条目')
+  check(dedupeSecond.doc.groups[0].items[0].text.includes('没接进 job 落盘'), '同一轮换措辞保留更全的写法')
+
+  await addMemoItems('sess-dedupe', { turn: 2, prompt: 'p', items: [{ text: '回归 check 脚本' }] })
+  const upgraded = await addMemoItems('sess-dedupe', { turn: 2, prompt: 'p', items: [{ text: '回归 check 脚本', children: ['跑 npm run check'] }] })
+  const upgradedItem = upgraded.doc.groups.find((group) => group.turn === 2).items[0]
+  check(upgraded.added === 1 && upgraded.skipped === 0, '替换掉旧写法算作写入而不是跳过')
+  check(upgradedItem.children.length === 1, '带子任务的写法替换掉平铺写法')
+
+  const structFirst = await addMemoItems('sess-child-state', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '备份 profile 并导出配置，升级后刷新页面' }],
+  })
+  await toggleMemoNode('sess-child-state', structFirst.doc.groups[0].items[0].id)
+  const structNext = await addMemoItems('sess-child-state', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '还没做的', children: ['备份 profile 并导出配置，升级后刷新页面'] }],
+  })
+  const structItems = structNext.doc.groups[0].items
+  check(structItems.length === 1 && structItems[0].text === '还没做的', '平铺条目被结构化写法吸收')
+  check(structItems[0].children[0].done === true && structItems[0].done === true, '吸收后已勾选的子任务保持完成')
+
+  const softFirst = await addMemoItems('sess-soft-state', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '备份 profile 并导出配置，升级后刷新页面' }],
+  })
+  await toggleMemoNode('sess-soft-state', softFirst.doc.groups[0].items[0].id)
+  await addMemoItems('sess-soft-state', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '还没做的', children: ['备份 profile 并导出配置，升级后刷新页面再验证'] }],
+  })
+  const softItems = (await readMemo('sess-soft-state')).groups[0].items
+  check(softItems.length === 1 && softItems[0].children[0].done === true, '换措辞吸收时保留勾选状态')
+
+  const sameLeaf = await addMemoItems('sess-same-leaf', {
+    turn: 1,
+    prompt: 'p',
+    items: [
+      { text: '清单 A', children: ['跑同一脚本'] },
+      { text: '清单 B', children: ['跑同一脚本'] },
+    ],
+  })
+  await toggleMemoNode('sess-same-leaf', sameLeaf.doc.groups[0].items[0].children[0].id)
+  await addMemoItems('sess-same-leaf', { turn: 1, prompt: 'p', items: [{ text: '写一条无关的备忘' }] })
+  const sameLeafDoc = await readMemo('sess-same-leaf')
+  const firstChild = sameLeafDoc.groups[0].items[0].children[0]
+  const secondChild = sameLeafDoc.groups[0].items[1].children[0]
+  check(firstChild.done === true, '无关写入不会把已勾选的子任务改回未完成')
+  check(secondChild.done === false, '同名但未勾选的子任务保持未完成')
+
+  // 阈值边界：没有共同点名对象时，只差一个关键词的条目不能被并成一条。
+  const nearMiss = mergeMemoItems(
+    [{ text: 'memo 面板按轮次分组显示' }],
+    [{ text: 'memo 面板按轮次折叠显示' }],
+  )
+  check(nearMiss.length === 2, '覆盖率 0.75 的两条不合并')
+  const unnamedObjects = mergeMemoItems(
+    [{ text: '托盘启动网关要手动点' }],
+    [{ text: '托盘打开网页视图要手动点' }],
+  )
+  check(unnamedObjects.length === 2, '未点名对象时只差关键词的两条不合并')
+
+  const stateFirst = await addMemoItems('sess-state', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '升级前先备份 profile 再重启 DSH', callout: 'WARNING' }],
+  })
+  const stateItem = stateFirst.doc.groups[0].items[0]
+  await toggleMemoNode('sess-state', stateItem.id)
+  const longerText = '升级前先备份 profile 再重启 DSH，否则加载的还是旧代码'
+  await addMemoItems('sess-state', { turn: 1, prompt: 'p', items: [{ text: longerText }] })
+  const stateAfter = (await readMemo('sess-state')).groups[0].items[0]
+  check(stateAfter.id === stateItem.id, '替换时保留条目 id')
+  check(stateAfter.done === true, '替换时保留勾选状态')
+  check(stateAfter.callout === 'WARNING', '替换时保留 callout 类型')
+  check(stateAfter.text === longerText, '替换成信息更全的写法')
+
+  const batch = await addMemoItems('sess-batch', {
+    turn: 1,
+    prompt: 'p',
+    items: [
+      { text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' },
+      { text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。' },
+    ],
+  })
+  check(batch.added === 1 && batch.skipped === 1, '同批次后面的条目跟替换后的写法比对')
+  check(batch.doc.groups[0].items.length === 1, '同批次只留一条')
+
+  const batchLongFirst = await addMemoItems('sess-batch-long', {
+    turn: 1,
+    prompt: 'p',
+    items: [
+      { text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。' },
+      { text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' },
+    ],
+  })
+  check(batchLongFirst.doc.groups[0].items.length === 1, '同批次先写长版本也只留一条')
+
+  const toolAbsorb = await addMemoItems('sess-tool', {
+    turn: 1,
+    prompt: 'p',
+    items: [
+      { text: '还没做的', children: ['备份 profile 并导出配置，升级后刷新页面再验证'] },
+      { text: '备份 profile 并导出配置，升级后刷新页面' },
+    ],
+  })
+  check(toolAbsorb.doc.groups[0].items.length === 1, '工具写入路径同样让子任务吸收平铺条目')
+  check(toolAbsorb.doc.groups[0].items[0].text === '还没做的', '工具写入路径保留带子任务的条目')
+
+  const limited = mergeMemoItems(
+    [{ text: '备份 profile 并导出配置，升级后刷新页面' }, { text: '回归 check 脚本' }],
+    [{ text: '还没做的', children: ['备份 profile 并导出配置，升级后刷新页面再验证'] }],
+    2,
+  )
+  check(limited.length === 2 && limited[0].text === '还没做的', '先吸收再截断，结构化条目不被截掉')
 } finally {
   rmSync(home, { recursive: true, force: true })
 }
