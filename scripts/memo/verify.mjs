@@ -52,20 +52,25 @@ try {
     const parentAfter = afterAll.groups[0].items.find((item) => item.id === parent.id)
     check(parentAfter !== undefined && parentAfter.done === true, '子任务全勾后父项完成')
 
-    const parentBulkOff = await toggleMemoItem(session, parent.id, undefined)
-    check(parentBulkOff.ok === true, '父项可批量操作')
-    const afterBulkOff = await readMemo(session)
-    const parentBulkOffItem = afterBulkOff.groups[0].items.find((item) => item.id === parent.id)
+    // 父项点击只做「全部标记完成」，不反向取消
+    await toggleMemoItem(session, parent.id, parent.children[0].id)
+    const beforeBulk = await readMemo(session)
+    const beforeBulkItem = beforeBulk.groups[0].items.find((item) => item.id === parent.id)
+    check(beforeBulkItem !== undefined && beforeBulkItem.done === false, '取消一个子任务后父项回到未完成')
+    const parentBulk = await toggleMemoItem(session, parent.id, undefined)
+    check(parentBulk.ok === true, '父项可批量标记')
+    const afterBulk = await readMemo(session)
+    const afterBulkItem = afterBulk.groups[0].items.find((item) => item.id === parent.id)
     check(
-      parentBulkOffItem !== undefined && parentBulkOffItem.done === false && parentBulkOffItem.children.every((child) => child.done === false),
-      '父项已全部完成时点击会清空所有子任务',
+      afterBulkItem !== undefined && afterBulkItem.done === true && afterBulkItem.children.every((child) => child.done === true),
+      '父项点击把所有子任务标为完成',
     )
     await toggleMemoItem(session, parent.id, undefined)
-    const afterBulkOn = await readMemo(session)
-    const parentBulkOnItem = afterBulkOn.groups[0].items.find((item) => item.id === parent.id)
+    const afterBulkAgain = await readMemo(session)
+    const afterBulkAgainItem = afterBulkAgain.groups[0].items.find((item) => item.id === parent.id)
     check(
-      parentBulkOnItem !== undefined && parentBulkOnItem.done === true && parentBulkOnItem.children.every((child) => child.done === true),
-      '父项点击会勾上所有子任务',
+      afterBulkAgainItem !== undefined && afterBulkAgainItem.children.every((child) => child.done === true),
+      '再次点击不会取消已完成的子任务',
     )
   }
 
