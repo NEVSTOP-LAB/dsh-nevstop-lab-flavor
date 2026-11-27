@@ -3,7 +3,7 @@
 
 # dsh-nevstop-lab-flavor
 
-![dsh-nevstop-lab-flavor 头图：DSH 界面中央打开 NEVSTOP-LAB 设置页，八项改动以带图标的 spotlight 标出](assets/hero.png)
+![dsh-nevstop-lab-flavor 头图：DSH 界面中央打开 NEVSTOP-LAB 设置页，九项改动以带图标的 spotlight 标出](assets/hero.png)
 
 让 DSH 更贴合 NEVSTOP-LAB 使用习惯的本地化定制插件。功能逐项开关，关掉即恢复 DSH 原生行为。
 
@@ -19,6 +19,7 @@
 | <img src="assets/icons/balance.svg" width="20" height="20" alt=""> | [余额圆环](docs/features/balance-ring.md) | 开 | 在输入框右侧显示余额或用量，随时知道还能用多少。 |
 | <img src="assets/icons/machine.svg" width="20" height="20" alt=""> | [本机标识](docs/features/machine-badge.md) | 开 | 侧栏底部长显本机名称与 CPU/内存占用、标签页标题带同一前缀，远程时一眼分辨是哪台机器。 |
 | <img src="assets/icons/queue.svg" width="20" height="20" alt=""> | [排队消息默认展开](docs/features/queue-dock.md) | 开 | 排队发送的消息面板默认展开列出，之后手动展开/收起照旧；关掉即回原生折叠。 |
+| <img src="assets/icons/memo.svg" width="20" height="20" alt=""> | [备忘录](docs/features/memo.md) | 开 | 右侧栏按会话记录 Agent 产生的提醒与待办：按每一轮提示词分组，可勾选完成、带子任务，双击把文字带到输入框，标题栏显示「备忘 2/7」。 |
 
 设置入口：**设置 → NEVSTOP-LAB**。发送按钮的外观与快捷键提示跟随「编写器键位」开关，不单独占开关。
 
