@@ -32,7 +32,7 @@ Agent 通过 `memo_add` 工具写入，一次可传多条，子代理写入的�
 | `features.memo` | 开 | 功能总开关；关闭后不注册工具、不注入提示词、不出现面板与入口 |
 | `memo.injectPrompt` | 开 | 是否向 Agent 注入写入提示词 |
 | `memo.autoCallouts` | 开 | 回合结束时自动把回复里的 callout 收录为条目 |
-| `memo.doubleClick` | `append` | 双击动作：`append` 追加到输入框、`menu` 打开条目菜单、`copy` 复制文本、`none` 无操作 |
+| `memo.doubleClick` | `menu` | 双击动作：`append` 追加到输入框、`menu` 打开条目菜单、`copy` 复制文本、`none` 无操作 |
 
 ## 降级
 
