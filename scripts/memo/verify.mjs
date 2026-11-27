@@ -7,7 +7,7 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { addMemoItems, copyMemo, countMemo, readMemo, toggleMemoItem, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { addMemoItems, copyMemo, countMemo, readMemo, toggleMemoNode, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
@@ -45,19 +45,21 @@ try {
   const parent = again.doc.groups[0].items.find((item) => item.children.length > 0)
   check(parent !== undefined, '子任务父项存在')
   if (parent !== undefined) {
-    await toggleMemoItem(session, parent.id, parent.children[0].id)
-    check(parent.done === false, '子任务未全勾时父项未完成')
-    await toggleMemoItem(session, parent.id, parent.children[1].id)
+    await toggleMemoNode(session, parent.children[0].id)
+    const afterFirst = await readMemo(session)
+    const parentFirst = afterFirst.groups[0].items.find((item) => item.id === parent.id)
+    check(parentFirst !== undefined && parentFirst.done === false, '子任务未全勾时父项未完成')
+    await toggleMemoNode(session, parent.children[1].id)
     const afterAll = await readMemo(session)
     const parentAfter = afterAll.groups[0].items.find((item) => item.id === parent.id)
     check(parentAfter !== undefined && parentAfter.done === true, '子任务全勾后父项完成')
 
     // 父项点击只做「全部标记完成」，不反向取消
-    await toggleMemoItem(session, parent.id, parent.children[0].id)
+    await toggleMemoNode(session, parent.children[0].id)
     const beforeBulk = await readMemo(session)
     const beforeBulkItem = beforeBulk.groups[0].items.find((item) => item.id === parent.id)
     check(beforeBulkItem !== undefined && beforeBulkItem.done === false, '取消一个子任务后父项回到未完成')
-    const parentBulk = await toggleMemoItem(session, parent.id, undefined)
+    const parentBulk = await toggleMemoNode(session, parent.id)
     check(parentBulk.ok === true, '父项可批量标记')
     const afterBulk = await readMemo(session)
     const afterBulkItem = afterBulk.groups[0].items.find((item) => item.id === parent.id)
@@ -65,7 +67,7 @@ try {
       afterBulkItem !== undefined && afterBulkItem.done === true && afterBulkItem.children.every((child) => child.done === true),
       '父项点击把所有子任务标为完成',
     )
-    await toggleMemoItem(session, parent.id, undefined)
+    await toggleMemoNode(session, parent.id)
     const afterBulkAgain = await readMemo(session)
     const afterBulkAgainItem = afterBulkAgain.groups[0].items.find((item) => item.id === parent.id)
     check(
@@ -78,9 +80,22 @@ try {
   const leaf = bread.groups[0].items.find((item) => item.children.length === 0)
   check(leaf !== undefined, '独立条目存在')
   if (leaf !== undefined) {
-    const leafToggle = await toggleMemoItem(session, leaf.id, undefined)
+    const leafToggle = await toggleMemoNode(session, leaf.id)
     check(leafToggle.ok === true, '叶子条目可勾选')
   }
+
+  const deep = await addMemoItems('sess-deep', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '一级', children: [{ text: '二级', children: [{ text: '三级' }] }] }],
+  })
+  check(deep.added === 1 && deep.total === 1, '多层级条目只统计最深一层叶子')
+  const deepDoc = await readMemo('sess-deep')
+  const level3 = deepDoc.groups[0].items[0].children[0].children[0]
+  await toggleMemoNode('sess-deep', level3.id)
+  const afterDeep = await readMemo('sess-deep')
+  const rootDeep = afterDeep.groups[0].items[0]
+  check(rootDeep.done === true && rootDeep.children[0].done === true, '最深一层完成后逐级向上推导')
 
   const copied = await copyMemo(session, 'sess-fork')
   check(copied.ok === true && copied.copied === true, '分叉复制')
@@ -132,7 +147,12 @@ try {
   const extracted = parseExtraction('Sure:\n{"items":[{"text":"备份后再升级","callout":"warning","children":["导出配置"]},{"text":""}]}\nDone')
   check(extracted.length === 1, '提取器忽略空条目')
   check(extracted[0] !== undefined && extracted[0].callout === 'WARNING', '提取器规范化 callout 类型')
-  check(extracted[0] !== undefined && Array.isArray(extracted[0].children) && extracted[0].children.length === 1, '提取器保留子任务')
+  check(extracted[0] !== undefined && Array.isArray(extracted[0].children) && extracted[0].children[0].text === '导出配置', '提取器保留子任务')
+  const nested = parseExtraction('{"items":[{"text":"一级","children":[{"text":"二级","children":["三级"]}]}]}')
+  check(
+    nested[0] !== undefined && nested[0].children[0].children[0].text === '三级',
+    '提取器保留多层级子任务',
+  )
   check(parseExtraction('no json here').length === 0, '提取器无 JSON 时为空')
   const many = parseExtraction('{"items":[{"text":"a"},{"text":"b"},{"text":"c"},{"text":"d"},{"text":"e"},{"text":"f"},{"text":"g"}]}')
   check(many.length === 6, '提取器限制条目数量')
