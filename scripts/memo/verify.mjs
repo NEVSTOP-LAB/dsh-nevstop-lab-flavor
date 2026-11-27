@@ -82,8 +82,7 @@ try {
   const writeRejected = await writeMemo('../escape', { groups: [] }).then(() => false, () => true)
   check(writeRejected, '非法会话标识写入被拒')
 
-  const callouts = extractCallouts([
-    '今天改完了。',
+  const callouts = extractCallouts([    '今天改完了。',
     '',
     '> [!WARNING]',
     '> 升级前先备份 profile。',
@@ -99,6 +98,16 @@ try {
   check(callouts[0] !== undefined && callouts[0].text.includes('升级前先备份 profile'), '合并标题与正文')
   check(callouts[0] !== undefined && callouts[0].text.includes('第二步再刷新页面'), '合并多行正文')
   check(extractCallouts('没有 callout 的正文') .length === 0, '无 callout 时为空')
+
+  const withCallout = await addMemoItems('sess-callout', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '备份后再升级', callout: 'WARNING' }, { text: '普通条目', callout: 'bogus' }],
+  })
+  check(withCallout.added === 2, '带 callout 的条目可写入')
+  const storedCallouts = (await readMemo('sess-callout')).groups[0].items
+  check(storedCallouts[0] !== undefined && storedCallouts[0].callout === 'WARNING', 'callout 类型持久化')
+  check(storedCallouts[1] !== undefined && storedCallouts[1].callout === undefined, '未知 callout 被忽略')
 } finally {
   rmSync(home, { recursive: true, force: true })
 }
