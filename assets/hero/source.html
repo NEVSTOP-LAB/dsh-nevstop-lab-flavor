@@ -221,7 +221,7 @@
   /* ---------- settings dialog ---------- */
   .settings-cluster { position: absolute; inset: 0; z-index: 30; pointer-events: none; transform: translate(65px, 88px) scale(.9); transform-origin: 0 0; }
   .settings {
-    position: absolute; left: 450px; top: 236px; width: 780px; height: 590px; z-index: 30;
+    position: absolute; left: 450px; top: 236px; width: 780px; height: 640px; z-index: 30;
     background: #1c1c20; border: 1px solid rgba(255, 255, 255, .13); border-radius: 16px; overflow: hidden;
     box-shadow: 0 44px 100px rgba(0, 0, 0, .62), inset 0 0 0 1px rgba(255, 255, 255, .03);
   }
@@ -353,10 +353,10 @@
   </div>
   <div class="headline">
     <h1>给 DSH 加上 NEVSTOP-LAB 的手感</h1>
-    <p>8 项定制，每项一个开关；图上用图标和编号标出改动位置。入口：<span class="accent">设置 → NEVSTOP-LAB</span></p>
+    <p>9 项定制，每项一个开关；图上用图标和编号标出改动位置。入口：<span class="accent">设置 → NEVSTOP-LAB</span></p>
   </div>
   <div class="head-pills">
-    <span class="pill hot">8 项独立开关</span>
+    <span class="pill hot">9 项独立开关</span>
     <span class="pill">DSH ≥ 0.2.1</span>
     <span class="pill">MIT</span>
   </div>
@@ -634,13 +634,21 @@
           </span>
           <span class="card-actions"><span class="gear"><svg class="ui"><use href="#i-gear"/></svg></span><span class="toggle"></span></span>
         </div>
-        <div class="card hl">
+        <div class="card">
           <span class="card-ico"><img src="../icons/queue.svg" alt=""></span>
           <span class="card-text">
             <span class="card-title">排队消息默认展开</span>
             <span class="card-desc">排队发送的面板默认展开列出，之后手动展开/收起照旧</span>
           </span>
           <span class="toggle"></span>
+        </div>
+        <div class="card hl">
+          <span class="card-ico"><img src="../icons/memo.svg" alt=""></span>
+          <span class="card-text">
+            <span class="card-title">备忘录</span>
+            <span class="card-desc">按轮次分组的提醒与待办 · 勾选完成 · 标题栏显示备忘 2/7</span>
+          </span>
+          <span class="card-actions"><span class="gear"><svg class="ui"><use href="#i-gear"/></svg></span><span class="toggle"></span></span>
         </div>
       </div>
 
@@ -662,6 +670,7 @@
     <path d="M406 740 L446 740"/>
     <path d="M1261 826 L1261 862"/>
     <path d="M356 790 L302 866"/>
+    <path d="M1265 740 L1212 805"/>
   </g>
   <g fill="none" stroke="rgba(86,134,254,.9)" stroke-width="1.5">
     <circle cx="1342" cy="864" r="3.2"/>
@@ -672,6 +681,7 @@
     <circle cx="448" cy="740" r="3.2"/>
     <circle cx="1261" cy="864" r="3.2"/>
     <circle cx="300" cy="866" r="3.2"/>
+    <circle cx="1210" cy="806" r="3.2"/>
   </g>
 </svg>
 
@@ -683,6 +693,7 @@
 <div class="pin" style="left:1241px;top:786px"><img src="../icons/balance.svg" alt=""><span class="n">6</span></div>
 <div class="pin" style="left:336px;top:770px"><img src="../icons/machine.svg" alt=""><span class="n">7</span></div>
 <div class="pin" style="left:366px;top:720px"><img src="../icons/queue.svg" alt=""><span class="n">8</span></div>
+<div class="pin" style="left:1245px;top:700px"><img src="../icons/memo.svg" alt=""><span class="n">9</span></div>
 </div>
 
 <div class="legend">
@@ -695,6 +706,7 @@
   <span class="lg-item"><span class="lg-num">6</span><img class="lg-ico" src="../icons/balance.svg" alt=""><span class="lg-text">余额圆环</span></span>
   <span class="lg-item"><span class="lg-num">7</span><img class="lg-ico" src="../icons/machine.svg" alt=""><span class="lg-text">本机标识</span></span>
   <span class="lg-item"><span class="lg-num">8</span><img class="lg-ico" src="../icons/queue.svg" alt=""><span class="lg-text">排队消息默认展开</span></span>
+  <span class="lg-item"><span class="lg-num">9</span><img class="lg-ico" src="../icons/memo.svg" alt=""><span class="lg-text">备忘录</span></span>
 </div>
 
 <div class="mock-note">界面为示意图 · 实际效果以插件为准</div>
