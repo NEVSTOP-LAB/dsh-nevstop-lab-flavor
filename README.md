@@ -17,7 +17,7 @@
 | <img src="assets/icons/sessions.svg" width="20" height="20" alt=""> | [活跃会话区](docs/features/active-sessions.md) | 开 | 在「工作区」上方列出最近活跃的会话；标题旁的 Dashboard 按钮打开多会话同屏预览，下方保留输入框与会话统计，点击格子即可切到对应会话并继续输入；每格标题栏显示该会话的 `Agent N · 活跃 M`；比例与行列可在页头就地调整；空格子直接复用首页输入区（含模型选择）发新任务；格子内容默认 90% 缩放；侧栏收成图标态时换成图标与标题首字。 |
 | <img src="assets/icons/model.svg" width="20" height="20" alt=""> | [新会话默认模型](docs/features/default-model.md) | 开 | 新会话固定使用指定模型，避免沿用上个会话的选择多花冤枉钱。 |
 | <img src="assets/icons/balance.svg" width="20" height="20" alt=""> | [余额圆环](docs/features/balance-ring.md) | 开 | 在输入框右侧显示余额或用量，随时知道还能用多少。 |
-| <img src="assets/icons/machine.svg" width="20" height="20" alt=""> | [本机标识](docs/features/machine-badge.md) | 开 | 侧栏底部长显本机名称与 CPU/内存占用、标签页标题带同一前缀，远程时一眼分辨是哪台机器。 |
+| <img src="assets/icons/machine.svg" width="20" height="20" alt=""> | [本机标识](docs/features/machine-badge.md) | 开 | 侧栏底部长显本机名称、所在 profile 与 CPU/内存占用，标签页标题带同一前缀；远程时一眼分辨是哪台机器。 |
 | <img src="assets/icons/queue.svg" width="20" height="20" alt=""> | [排队消息默认展开](docs/features/queue-dock.md) | 开 | 排队发送的消息面板默认展开列出，之后手动展开/收起照旧；关掉即回原生折叠。 |
 | <img src="assets/icons/memo.svg" width="20" height="20" alt=""> | [备忘录](docs/features/memo.md) | 开 | 右侧栏按会话记录 Agent 产生的提醒与待办：按每一轮提示词分组，可勾选完成、带子任务，双击把文字带到输入框，标题栏显示「备忘 2/7」。 |
 
