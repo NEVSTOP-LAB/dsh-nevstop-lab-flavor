@@ -11,6 +11,8 @@ import { addMemoItems, copyMemo, countMemo, readMemo, toggleMemoNode, writeMemo,
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
+import { extractOpenItems } from '../../lib/memo/openitems.js'
+import { mergeMemoItems } from '../../lib/memo/merge.js'
 
 const home = join(process.cwd(), '.tmp', 'memo-verify')
 rmSync(home, { recursive: true, force: true })
@@ -133,6 +135,10 @@ try {
   check(callouts[0] !== undefined && callouts[0].text.includes('升级前先备份 profile'), '合并标题与正文')
   check(callouts[0] !== undefined && callouts[0].text.includes('第二步再刷新页面'), '合并多行正文')
   check(extractCallouts('没有 callout 的正文') .length === 0, '无 callout 时为空')
+  const fiveCallouts = extractCallouts(
+    ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'].map((kind) => `> [!${kind}]\n> ${kind} 正文`).join('\n\n'),
+  )
+  check(fiveCallouts.length === 5, '五张 callout 全部收录且不截断')
 
   const withCallout = await addMemoItems('sess-callout', {
     turn: 1,
@@ -155,7 +161,11 @@ try {
   )
   check(parseExtraction('no json here').length === 0, '提取器无 JSON 时为空')
   const many = parseExtraction('{"items":[{"text":"a"},{"text":"b"},{"text":"c"},{"text":"d"},{"text":"e"},{"text":"f"},{"text":"g"}]}')
-  check(many.length === 6, '提取器限制条目数量')
+  check(many.length === 7, '提取器不再截断七条')
+  const thirteen = parseExtraction(
+    '{"items":[' + Array.from({ length: 13 }, (_, index) => `{"text":"x${index}"}`).join(',') + ']}',
+  )
+  check(thirteen.length === 12, '提取器上限十二条')
 
   const ordered = orderByAppearance([{ text: 'C' }, { text: 'A' }, { text: 'B' }], '先做 A，然后 B，最后 C。')
   check(ordered.map((item) => item.text).join('') === 'ABC', '按文中首次出现位置排序')
@@ -163,6 +173,31 @@ try {
   check(paraphrased[0].text === '甲', '能定位原文时排序')
   const unfindable = orderByAppearance([{ text: '不存在' }, { text: '甲' }], '甲')
   check(unfindable[0].text === '不存在', '无法定位时保持模型顺序')
+
+  const openReply = [
+    '本轮改动完成。',
+    '',
+    '仍未覆盖，需要你在界面上手动补测的三项：',
+    '',
+    '- 完全重复文本：写两条一字不差的备忘，看是否去重。',
+    '- 删除与完成态：勾选后父项完成的判定只能在 GUI 里点。',
+    '- 跨会话/并发写入：换新会话或两个会话同时写的没有测。',
+    '',
+    '以上是说明。',
+  ].join('\n')
+  const open = extractOpenItems(openReply)
+  check(open.length === 3, '收录未覆盖清单的三条')
+  check(open[0] !== undefined && open[0].text.includes('完全重复文本'), '保留清单原文顺序')
+  check(extractOpenItems('改完了，说明如下：\n\n- 第一条\n- 第二条').length === 0, '无触发词的列表不收录')
+  check(extractOpenItems('下一步：\n\n- 一级\n  - 二级\n  - 二级 B').at(0)?.children?.length === 2, '嵌套列表成为子任务')
+
+  const merged = mergeMemoItems(
+    [{ text: '备份后再升级' }],
+    [{ text: '备份后再升级。', callout: 'WARNING' }, { text: '回归 check 脚本', callout: 'NOTE' }],
+  )
+  check(merged.length === 2, '同一句的重复补充被合并')
+  check(merged[0].text === '备份后再升级' && merged[1].text === '回归 check 脚本', '模型条目优先且保持顺序')
+  check(mergeMemoItems([], [{ text: 'a' }, { text: 'b' }], 1).length === 1, '合并受上限约束')
 } finally {
   rmSync(home, { recursive: true, force: true })
 }
