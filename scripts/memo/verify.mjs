@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { addMemoItems, copyMemo, countMemo, readMemo, toggleMemoItem, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
+import { orderByAppearance } from '../../lib/memo/extract.js'
 
 const home = join(process.cwd(), '.tmp', 'memo-verify')
 rmSync(home, { recursive: true, force: true })
@@ -117,6 +118,13 @@ try {
   check(parseExtraction('no json here').length === 0, '提取器无 JSON 时为空')
   const many = parseExtraction('{"items":[{"text":"a"},{"text":"b"},{"text":"c"},{"text":"d"},{"text":"e"},{"text":"f"},{"text":"g"}]}')
   check(many.length === 6, '提取器限制条目数量')
+
+  const ordered = orderByAppearance([{ text: 'C' }, { text: 'A' }, { text: 'B' }], '先做 A，然后 B，最后 C。')
+  check(ordered.map((item) => item.text).join('') === 'ABC', '按文中首次出现位置排序')
+  const paraphrased = orderByAppearance([{ text: '乙' }, { text: '甲' }], '甲 与 乙')
+  check(paraphrased[0].text === '甲', '能定位原文时排序')
+  const unfindable = orderByAppearance([{ text: '不存在' }, { text: '甲' }], '甲')
+  check(unfindable[0].text === '不存在', '无法定位时保持模型顺序')
 } finally {
   rmSync(home, { recursive: true, force: true })
 }
