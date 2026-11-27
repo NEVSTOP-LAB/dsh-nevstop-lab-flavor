@@ -9,6 +9,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { addMemoItems, copyMemo, countMemo, readMemo, toggleMemoItem, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
+import { parseExtraction } from '../../lib/memo/extract.js'
 
 const home = join(process.cwd(), '.tmp', 'memo-verify')
 rmSync(home, { recursive: true, force: true })
@@ -108,6 +109,14 @@ try {
   const storedCallouts = (await readMemo('sess-callout')).groups[0].items
   check(storedCallouts[0] !== undefined && storedCallouts[0].callout === 'WARNING', 'callout 类型持久化')
   check(storedCallouts[1] !== undefined && storedCallouts[1].callout === undefined, '未知 callout 被忽略')
+
+  const extracted = parseExtraction('Sure:\n{"items":[{"text":"备份后再升级","callout":"warning","children":["导出配置"]},{"text":""}]}\nDone')
+  check(extracted.length === 1, '提取器忽略空条目')
+  check(extracted[0] !== undefined && extracted[0].callout === 'WARNING', '提取器规范化 callout 类型')
+  check(extracted[0] !== undefined && Array.isArray(extracted[0].children) && extracted[0].children.length === 1, '提取器保留子任务')
+  check(parseExtraction('no json here').length === 0, '提取器无 JSON 时为空')
+  const many = parseExtraction('{"items":[{"text":"a"},{"text":"b"},{"text":"c"},{"text":"d"},{"text":"e"},{"text":"f"},{"text":"g"}]}')
+  check(many.length === 6, '提取器限制条目数量')
 } finally {
   rmSync(home, { recursive: true, force: true })
 }

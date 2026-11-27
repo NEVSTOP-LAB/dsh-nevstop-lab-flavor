@@ -20,6 +20,8 @@ Agent 通过 `memo_add` 工具写入，一次可传多条，子代理写入的�
 
 提示词注入让 Agent 知道何时记录 callout 之外的提醒：需要用户记住的限制、留给用户的后续动作；日常进度不记录。注入开关关闭后，工具与提示词都不再出现在模型侧。
 
+每轮结束还会跑一次**轻量提取**：只把「本轮用户提示 + 最终回复」交给一次小模型请求，由它判断哪些内容需要记住（含 callout、待确认项、后续动作），结果按当前轮写入。它不读历史、不建会话、不写会话日志；请求失败或没有可用模型时，回退到 callout 规则提取。
+
 ## 数据
 
 - 位置：`%USERPROFILE%\.dsh\plugin-data\dsh-nevstop-lab-flavor\memo\<sessionId>.json`（`DSH_HOME` 生效时跟随该目录）。
@@ -34,6 +36,7 @@ Agent 通过 `memo_add` 工具写入，一次可传多条，子代理写入的�
 | `features.memo` | 开 | 功能总开关；关闭后不注册工具、不注入提示词、不出现面板与入口 |
 | `memo.injectPrompt` | 开 | 是否向 Agent 注入写入提示词 |
 | `memo.autoCallouts` | 开 | 回合结束时自动把回复里的 callout 收录为条目 |
+| `memo.autoExtract` | 开 | 回合结束时用一次轻量模型请求提取提醒；关闭后只保留 callout 规则 |
 | `memo.doubleClick` | `menu` | 双击动作：`append` 追加到输入框、`menu` 打开条目菜单、`copy` 复制文本、`none` 无操作 |
 
 ## 降级
