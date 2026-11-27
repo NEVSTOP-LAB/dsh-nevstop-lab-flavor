@@ -5,14 +5,15 @@
  * 只依赖 Node 内置模块，在 `.tmp/memo-verify` 下自建 `DSH_HOME`，跑完清理。
  * 任何断言失败打印 `memo verify: <原因>` 并以退出码 1 结束；全部通过输出一行 `memo verified`。
  */
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { addMemoItems, copyMemo, countMemo, readMemo, toggleMemoNode, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { addMemoItems, copyMemo, countMemo, openMemoItems, readMemo, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
 import { extractOpenItems } from '../../lib/memo/openitems.js'
 import { mergeMemoItems } from '../../lib/memo/merge.js'
+import { createMemoUpdateTool } from '../../lib/memo/tool.js'
 
 const home = join(process.cwd(), '.tmp', 'memo-verify')
 rmSync(home, { recursive: true, force: true })
@@ -368,6 +369,70 @@ try {
     2,
   )
   check(limited.length === 2 && limited[0].text === '还没做的', '先吸收再截断，结构化条目不被截掉')
+
+  await addMemoItems('sess-update', {
+    turn: 3,
+    prompt: '第 3 轮',
+    items: [
+      { text: '还没做的', children: ['备份 profile 并导出配置，升级后刷新页面', '补齐 CHANGELOG'] },
+    ],
+  })
+  const updateOne = await updateMemoItems('sess-update', { items: [{ text: '备份 profile 并导出配置，升级后刷新页面再验证' }] })
+  check(updateOne.updated === 1 && updateOne.unfinished === 1 && updateOne.total === 2, '按相似文本勾选已有子任务')
+  check(updateOne.doc.groups[0].items[0].done === false, '勾一个子任务后父项仍未完成')
+  check(updateOne.open.length === 1 && updateOne.open[0].text === '补齐 CHANGELOG' && updateOne.open[0].turn === 3, '未完成清单带轮次')
+  const updateOpen = openMemoItems(updateOne.doc)
+  check(updateOpen.length === 1 && updateOpen[0].text === '补齐 CHANGELOG', 'openMemoItems 只列未完成的叶子')
+
+  const updateSecond = await updateMemoItems('sess-update', { items: [{ text: '补齐 CHANGELOG' }] })
+  check(updateSecond.updated === 1 && updateSecond.unfinished === 0 && updateSecond.open.length === 0, '勾完最后一条后全部完成')
+  check(updateSecond.doc.groups[0].items[0].done === true, '父项随子任务全部完成')
+
+  const updateAgain = await updateMemoItems('sess-update', { items: [{ text: '补齐 CHANGELOG' }] })
+  check(updateAgain.updated === 0 && updateAgain.unchanged === 1, '重复勾选计入已是最新状态')
+
+  const updateMiss = await updateMemoItems('sess-update', { items: [{ text: '完全无关的一条' }] })
+  check(updateMiss.updated === 0 && updateMiss.unmatched.length === 1, '匹配不到时返回未匹配文本')
+  check(updateMiss.unmatchedTotal === 1, '未匹配条数给出总数')
+  const manyMisses = await updateMemoItems('sess-update', {
+    items: Array.from({ length: 9 }, (_, index) => `完全无关的第 ${index + 1} 条`),
+  })
+  check(manyMisses.unmatched.length === 8 && manyMisses.unmatchedTotal === 9, '未匹配文本最多回 8 条并给出总数')
+
+  const updateReopen = await updateMemoItems('sess-update', { items: [{ text: '补齐 CHANGELOG', done: false }] })
+  check(updateReopen.updated === 1 && updateReopen.unfinished === 1, 'done: false 可重新打开')
+
+  const readOnlyFile = join(memoRoot(), 'sess-update.json')
+  const readOnlyBefore = readFileSync(readOnlyFile, 'utf8')
+  const readOnly = await updateMemoItems('sess-update', { items: [] })
+  check(readOnly.updated === 0 && readOnly.open.length === 1, '只读调用返回未完成清单')
+  check(readFileSync(readOnlyFile, 'utf8') === readOnlyBefore, '只读调用不写盘')
+
+  await addMemoItems('sess-cross', { turn: 1, prompt: 'p1', items: [{ text: '整理提交说明与 PR 描述' }] })
+  await addMemoItems('sess-cross', { turn: 2, prompt: 'p2', items: [{ text: '整理提交说明与 PR 描述' }] })
+  const cross = await updateMemoItems('sess-cross', { items: [{ text: '整理提交说明与 PR 描述' }] })
+  check(cross.updated === 2 && cross.unfinished === 0, '同一文本跨轮一次全部勾掉')
+
+  await addMemoItems('sess-deep-update', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '一级', children: [{ text: '二级', children: ['三级'] }] }],
+  })
+  const deepUpdate = await updateMemoItems('sess-deep-update', { items: [{ text: '三级' }] })
+  const deepRoot = deepUpdate.doc.groups[0].items[0]
+  check(deepUpdate.updated === 1 && deepRoot.done === true && deepRoot.children[0].done === true, '三层子任务勾选后逐级重算')
+
+  const manyItems = Array.from({ length: 25 }, (_, index) => `待办 ${index + 1}`)
+  await addMemoItems('sess-open-cap', { turn: 1, prompt: 'p', items: [{ text: '一大批', children: manyItems }] })
+  const capped = await updateMemoItems('sess-open-cap', { items: [] })
+  check(capped.open.length === 20 && capped.openTotal === 25, '未完成清单最多 20 条并给出总数')
+
+  const updateTool = createMemoUpdateTool({})
+  check(updateTool.name === 'memo_update', '更新工具名')
+  check(updateTool.parameters.required === undefined, '更新工具的 items 可省略（只读取清单）')
+  check(updateTool.output.schema.required.includes('open'), '更新工具返回未完成清单')
+  check(updateTool.output.schema.required.includes('openTotal'), '更新工具返回未完成总数')
+  check(updateTool.output.schema.required.includes('unmatchedTotal'), '更新工具返回未匹配总数')
 } finally {
   rmSync(home, { recursive: true, force: true })
 }
