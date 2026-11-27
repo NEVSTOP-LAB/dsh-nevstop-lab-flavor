@@ -243,6 +243,8 @@
   .nav-item.active .ui { color: #8fb0ff; }
   .settings-content { flex: 1; min-width: 0; padding: 15px 20px 13px; display: flex; flex-direction: column; }
   .section-head { padding-bottom: 11px; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+  .section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .version-chip { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; font-size: 10.5px; line-height: 16px; color: #9399a2; white-space: nowrap; }
   .section-title { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 600; color: #f0f2f5; letter-spacing: .03em; }
   .section-title img { width: 24px; height: 24px; }
   .section-intro { margin-top: 5px; font-size: 12px; line-height: 18px; color: #9aa0a8; }
@@ -564,7 +566,10 @@
 
     <div class="settings-content">
       <div class="section-head">
-        <div class="section-title"><img src="../icons/flavor.svg" alt="">NEVSTOP-LAB</div>
+        <div class="section-title-row">
+          <div class="section-title"><img src="../icons/flavor.svg" alt="">NEVSTOP-LAB</div>
+          <div class="version-chip">v0.14.2 · 检查更新</div>
+        </div>
         <div class="section-intro">NEVSTOP-LAB 对 DSH 的本地化微调。每项可单独开关，齿轮展开该项配置，关闭即恢复 DSH 原生行为。</div>
       </div>
 
