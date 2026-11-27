@@ -186,10 +186,14 @@ try {
     '以上是说明。',
   ].join('\n')
   const open = extractOpenItems(openReply)
-  check(open.length === 3, '收录未覆盖清单的三条')
-  check(open[0] !== undefined && open[0].text.includes('完全重复文本'), '保留清单原文顺序')
+  check(open.length === 1, '清单归到一个父项')
+  check(open[0] !== undefined && open[0].text.includes('仍未覆盖'), '父项取触发句')
+  check(open[0] !== undefined && open[0].children.length === 3, '三条列表项成为子任务')
+  check(open[0] !== undefined && open[0].children[0].text.includes('完全重复文本'), '保留清单原文顺序')
   check(extractOpenItems('改完了，说明如下：\n\n- 第一条\n- 第二条').length === 0, '无触发词的列表不收录')
-  check(extractOpenItems('下一步：\n\n- 一级\n  - 二级\n  - 二级 B').at(0)?.children?.length === 2, '嵌套列表成为子任务')
+  const nestedOpen = extractOpenItems('下一步：\n\n- 一级\n  - 二级\n  - 二级 B')
+  check(nestedOpen.length === 1 && nestedOpen[0].children.length === 1, '清单父项只挂一级列表项')
+  check(nestedOpen[0] !== undefined && nestedOpen[0].children[0].children.length === 2, '嵌套列表继续成为子任务')
 
   const merged = mergeMemoItems(
     [{ text: '备份后再升级' }],
