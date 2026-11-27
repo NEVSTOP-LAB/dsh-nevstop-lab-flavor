@@ -56,7 +56,7 @@ try {
     const parentAfter = afterAll.groups[0].items.find((item) => item.id === parent.id)
     check(parentAfter !== undefined && parentAfter.done === true, '子任务全勾后父项完成')
 
-    // 父项点击只做「全部标记完成」，不反向取消
+    // 父项点击整组切换：未全完成时全部标记完成，已全完成时全部取消
     await toggleMemoNode(session, parent.children[0].id)
     const beforeBulk = await readMemo(session)
     const beforeBulkItem = beforeBulk.groups[0].items.find((item) => item.id === parent.id)
@@ -69,12 +69,13 @@ try {
       afterBulkItem !== undefined && afterBulkItem.done === true && afterBulkItem.children.every((child) => child.done === true),
       '父项点击把所有子任务标为完成',
     )
-    await toggleMemoNode(session, parent.id)
-    const afterBulkAgain = await readMemo(session)
-    const afterBulkAgainItem = afterBulkAgain.groups[0].items.find((item) => item.id === parent.id)
+    const parentClear = await toggleMemoNode(session, parent.id)
+    check(parentClear.ok === true, '已完成父项仍可点击')
+    const afterClear = await readMemo(session)
+    const afterClearItem = afterClear.groups[0].items.find((item) => item.id === parent.id)
     check(
-      afterBulkAgainItem !== undefined && afterBulkAgainItem.children.every((child) => child.done === true),
-      '再次点击不会取消已完成的子任务',
+      afterClearItem !== undefined && afterClearItem.done === false && afterClearItem.children.every((child) => child.done === false),
+      '再次点击父项把所有子任务取消完成',
     )
   }
 
