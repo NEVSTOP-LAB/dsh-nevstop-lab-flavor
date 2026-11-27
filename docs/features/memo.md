@@ -16,7 +16,7 @@ Agent 通过 `memo_add` 工具写入，一次可传多条，子代理写入的�
 
 回复里的 GitHub 风格 callout（`> [!NOTE]`、`> [!WARNING]` 等）由宿主在回合结束时自动收录，条目按 callout 类型着色显示；不依赖 Agent 主动调用工具，可用设置里的「自动收录 callout」关闭。
 
-条目文本支持 Markdown：**粗体**、`行内代码`、链接、无序/有序列表、引用块，以及 `> [!NOTE]` 这类 callout 块（按 NOTE / TIP / IMPORTANT / WARNING / CAUTION 五种类型配色）。`memo_add` 也可以直接指定 `callout` 类型。
+条目文本支持 Markdown：**粗体**、`行内代码`、链接、无序/有序列表、引用块，以及 `> [!NOTE]` 这类 callout 块。callout 的强调色取自 DSH 主题 token（brand / success / warn / error，`important` 为 brand 与 error 的混合），与 Chat 里的 GitHub 告警保持同一套配色；`memo_add` 也可以直接指定 `callout` 类型。
 
 提示词注入让 Agent 知道何时记录 callout 之外的提醒：需要用户记住的限制、留给用户的后续动作；日常进度不记录。注入开关关闭后，工具与提示词都不再出现在模型侧。
 
