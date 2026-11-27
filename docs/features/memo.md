@@ -47,7 +47,7 @@ Agent 通过 `memo_add` 工具写入，一次可传多条，子代理写入的�
 | `memo.autoCallouts` | 开 | 回合结束时自动把回复里的 callout 收录为条目 |
 | `memo.autoExtract` | 开 | 回合结束时用一次轻量模型请求提取提醒；关闭后只保留 callout 规则 |
 | `memo.extractProvider` / `memo.extractModel` | 空 | 提取用的模型，设置页为供应商/模型下拉（含「跟随默认模型」）；留空跟随当前默认模型 |
-| `memo.extractPrompt` | 空 | 提取指令；留空使用内置提示词（设置页可查看内置原文） |
+| `memo.extractPrompt` | 空 | 提取指令；留空使用内置的中文提示词（设置页可查看全文），自定义时仍须要求模型返回 `{"items":[…]}` |
 | `memo.doubleClick` | `menu` | 双击动作：`append` 追加到输入框、`menu` 打开条目菜单、`copy` 复制文本、`none` 无操作 |
 
 ## 降级
