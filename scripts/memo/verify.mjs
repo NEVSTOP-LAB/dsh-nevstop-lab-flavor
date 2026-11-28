@@ -312,6 +312,10 @@ try {
     { text: '拿到 PASS 我再更新 PR', children: [{ text: '你需要把插件切回 git tag' }] },
   ])
   check(planParent.items.length === 1 && planParent.items[0].text === '你需要把插件切回 git tag', '父项是计划时子项提升上来')
+  check(typeof planParent.items[0] === 'object' && typeof planParent.items[0].text === 'string', '提升的子项统一为对象节点')
+  const nestedDrop = stripAssistantPlans([{ text: '你需要处理这些', children: ['下一轮我会看日志'] }])
+  check(nestedDrop.items.length === 1 && nestedDrop.items[0].children.length === 0, '子层计划句被剔除')
+  check(nestedDrop.dropped.length === 1, '子层被丢弃的计划项计入 dropped')
   check(assistantPlanSentence('下一轮观察 X 是否出现'), '下一轮观察的观察项判为计划')
   const recallPair = [
     { id: 'm_recall', turn: 1, text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' },
@@ -548,6 +552,24 @@ try {
   const legacyOpen = openMemoItems(legacyStored)
   check(legacyOpen.some((item) => item.text.includes('客户端没有浏览器') && item.subagent === true), '清单里的子代理条目带归属标记')
   check(legacyOpen.some((item) => item.text === '刷新页面手测自动收起' && item.subagent !== true), '主会话条目不带归属标记')
+  const userParentDoc = {
+    version: 2,
+    sessionId: 'sess-user-parent',
+    groups: [{
+      turn: 1,
+      prompt: '',
+      items: [{
+        id: 'm_user_parent',
+        text: '子代理',
+        done: false,
+        source: 'agent',
+        children: [{ id: 'm_user_child', text: '普通子项', done: false, source: 'agent', children: [] }],
+      }],
+    }],
+  }
+  const userParentStored = await writeMemo('sess-user-parent', userParentDoc)
+  check(userParentStored.groups[0].items[0].subagent !== true, '用户自建的裸标题父节点不被推断成子代理')
+  check(openMemoItems(userParentStored, { includeSubagents: false }).length === 1, '用户自建的裸标题子树仍参与主会话回收')
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
