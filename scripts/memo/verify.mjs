@@ -10,6 +10,8 @@ import { join } from 'node:path'
 import { addMemoItems, copyMemo, countMemo, openMemoItems, readMemo, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
+import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
+import { collectText } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
 import { extractOpenItems } from '../../lib/memo/openitems.js'
 import { mergeMemoItems } from '../../lib/memo/merge.js'
@@ -141,6 +143,24 @@ try {
     ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'].map((kind) => `> [!${kind}]\n> ${kind} 正文`).join('\n\n'),
   )
   check(fiveCallouts.length === 5, '五张 callout 全部收录且不截断')
+  const twelveCallouts = extractCallouts(
+    Array.from({ length: 12 }, (_, index) => `> [!NOTE]\n> 第 ${index + 1} 张`).join('\n\n'),
+  )
+  check(twelveCallouts.length === 12, 'callout 不按张数截断')
+  const manyBullets = extractOpenItems(
+    '下一步：\n\n' + Array.from({ length: 12 }, (_, index) => `- 第 ${index + 1} 项`).join('\n'),
+  )
+  check(manyBullets[0] !== undefined && manyBullets[0].children.length === 12, '清单不按条数截断')
+  const seventyBullets = extractOpenItems(
+    '下一步：\n\n' + Array.from({ length: 70 }, (_, index) => `- 第 ${index + 1} 项`).join('\n'),
+  )
+  check(seventyBullets[0] !== undefined && seventyBullets[0].children.length === 70, '清单扫描不按行数截断')
+  const thirtyChildren = await addMemoItems('sess-many-children', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '一大批子任务', children: Array.from({ length: 30 }, (_, index) => `第 ${index + 1} 个子任务`) }],
+  })
+  check(thirtyChildren.doc.groups[0].items[0].children.length === 30, '子任务不按条数截断')
 
   const withCallout = await addMemoItems('sess-callout', {
     turn: 1,
@@ -164,10 +184,94 @@ try {
   check(parseExtraction('no json here').length === 0, '提取器无 JSON 时为空')
   const many = parseExtraction('{"items":[{"text":"a"},{"text":"b"},{"text":"c"},{"text":"d"},{"text":"e"},{"text":"f"},{"text":"g"}]}')
   check(many.length === 7, '提取器不再截断七条')
-  const thirteen = parseExtraction(
-    '{"items":[' + Array.from({ length: 13 }, (_, index) => `{"text":"x${index}"}`).join(',') + ']}',
+
+  const withResolved = parseExtractionResult(
+    '{"items":[{"text":"还有一项没测"}],"resolved":["刷新页面手测自动收起","完全无关的一条"]}',
   )
-  check(thirteen.length === 12, '提取器上限十二条')
+  check(withResolved.items.length === 1, '提取结果保留新条目')
+  check(withResolved.resolved.length === 2, '提取结果带出已处理条目')
+  check(parseExtractionResult('{"items":[]}').resolved.length === 0, '没有 resolved 字段时为空')
+
+  const openForInput = Array.from({ length: 25 }, (_, index) => ({ turn: index + 1, text: `未完成条目 ${index + 1}` }))
+  const withOpen = extractionInput('这轮的提示', '回复正文', openForInput)
+  check(withOpen.includes('Open memo items in this session'), '提取输入带未完成清单')
+  check(withOpen.includes('[1] 未完成条目 1'), '未完成清单带轮次')
+  check(withOpen.includes('未完成条目 25'), '未完成清单不按条数截断')
+  const longReply = 'A'.repeat(20000) + 'TAIL_MARKER'
+  const oversized = extractionInput('提示', longReply, openForInput)
+  check(oversized.includes('TAIL_MARKER'), '长回复保留结尾内容')
+  check(oversized.includes('…'), '长回复中间用省略号连接')
+  check(oversized.includes('Open memo items in this session'), '长回复下未完成清单仍在')
+
+  const matchedResolved = matchResolved(
+    ['刷新页面手测自动收起', '完全无关的一条'],
+    [{ turn: 2, text: '刷新页面手测自动收起（面板是否收起）' }],
+  )
+  check(matchedResolved.length === 1 && matchedResolved[0].includes('刷新页面手测自动收起'), '已处理条目对齐到真实未完成条目')
+
+  const okStream = (async function* () {
+    yield { type: 'text-delta', text: 'hello' }
+    yield { type: 'finish', reason: { kind: 'stop' } }
+  })()
+  const okCollected = await collectText(okStream)
+  check(okCollected.text === 'hello' && okCollected.failure === '', '正常流收集文本且无失败原因')
+  const errStream = (async function* () {
+    yield { type: 'finish', reason: { kind: 'error', failure: { code: 'AUTH', message: 'bad key' } } }
+  })()
+  const errCollected = await collectText(errStream)
+  check(errCollected.text === '' && errCollected.failure.includes('AUTH'), '终止分片带出失败代码')
+  const abortedStream = (async function* () {
+    yield { type: 'finish', reason: { kind: 'aborted', failure: { code: 'CANCELLED' } } }
+  })()
+  check((await collectText(abortedStream)).failure.includes('aborted'), '终止分片带出 aborted')
+  const maxTokenStream = (async function* () {
+    yield { type: 'text-delta', text: '{"items":[' }
+    yield { type: 'finish', reason: { kind: 'max-tokens' } }
+  })()
+  check((await collectText(maxTokenStream)).failure === 'max-tokens', '终止分片带出 max-tokens 截断')
+  const blockStream = (async function* () {
+    yield { type: 'block-end', block: { type: 'text', text: 'from block' } }
+  })()
+  check((await collectText(blockStream)).text === 'from block', '只发完整块时回落到 block-end')
+
+  const manyOpenLines = Array.from({ length: 80 }, () => ({ turn: 1, text: '很长的一条未完成条目'.repeat(20) }))
+  const budgeted = extractionInput('提示', 'A'.repeat(30000), manyOpenLines)
+  check(budgeted.length <= 12000, '清单与回复合并后不超过输入预算')
+  check(budgeted.includes('Open memo items in this session'), '超长清单仍保留清单块')
+
+  const fifteen = parseExtraction('{"items":[' + Array.from({ length: 15 }, (_, index) => `{"text":"y${index}"}`).join(',') + ']}')
+  check(fifteen.length === 15, '提取器不再截断条目数量')
+  const manyMerged = mergeMemoItems(Array.from({ length: 30 }, (_, index) => ({ text: `条目 ${index}` })), [])
+  check(manyMerged.length === 30, '合并不再截断条目数量')
+
+  const absorbIdSeed = await addMemoItems('sess-absorb-id', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '备份 profile 并导出配置，升级后刷新页面' }],
+  })
+  const absorbIdOpen = openMemoItems(absorbIdSeed.doc)
+  await addMemoItems('sess-absorb-id', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '还没做的', children: ['备份 profile 并导出配置，升级后刷新页面再验证'] }],
+  })
+  const absorbIdDoc = await readMemo('sess-absorb-id')
+  check(absorbIdDoc.groups[0].items[0].children[0].id === absorbIdOpen[0].id, '被吸收条目的 id 转到新叶子上')
+  const absorbIdResolved = await updateMemoItems('sess-absorb-id', {
+    items: [{ text: '备份 profile 并导出配置，升级后刷新页面' }],
+    allowIds: absorbIdOpen.map((item) => item.id),
+  })
+  check(absorbIdResolved.updated === 1, '白名单仍能勾掉被吸收过的那一条')
+
+  const resolveSeed = await addMemoItems('sess-resolve', {
+    turn: 4,
+    prompt: 'p',
+    items: [{ text: '刷新页面手测自动收起（面板是否收起）' }, { text: '回归 check 脚本' }],
+  })
+  const resolveOpen = openMemoItems(resolveSeed.doc)
+  const resolveTargets = matchResolved(['刷新页面手测自动收起'], resolveOpen)
+  const resolveApplied = await updateMemoItems('sess-resolve', { items: resolveTargets.map((text) => ({ text })) })
+  check(resolveApplied.updated === 1 && resolveApplied.unfinished === 1, '自动回收只勾掉命中的那一条')
 
   const ordered = orderByAppearance([{ text: 'C' }, { text: 'A' }, { text: 'B' }], '先做 A，然后 B，最后 C。')
   check(ordered.map((item) => item.text).join('') === 'ABC', '按文中首次出现位置排序')
@@ -425,7 +529,25 @@ try {
   const manyItems = Array.from({ length: 25 }, (_, index) => `待办 ${index + 1}`)
   await addMemoItems('sess-open-cap', { turn: 1, prompt: 'p', items: [{ text: '一大批', children: manyItems }] })
   const capped = await updateMemoItems('sess-open-cap', { items: [] })
-  check(capped.open.length === 20 && capped.openTotal === 25, '未完成清单最多 20 条并给出总数')
+  check(capped.open.length === 25 && capped.openTotal === 25, '未完成清单不截断并给出总数')
+
+  const allowSeed = await addMemoItems('sess-allow', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '刷新页面手测自动收起（面板是否收起）' }],
+  })
+  const allowOpen = openMemoItems(allowSeed.doc)
+  check(typeof allowOpen[0].id === 'string' && allowOpen[0].id !== '', '未完成清单带条目 id')
+  await addMemoItems('sess-allow', { turn: 2, prompt: 'p', items: [{ text: '刷新页面手测自动收起（面板是否收起）' }] })
+  const scoped = await updateMemoItems('sess-allow', {
+    items: [{ text: '刷新页面手测自动收起' }],
+    allowIds: allowOpen.map((item) => item.id),
+  })
+  check(scoped.updated === 1, '白名单只勾提取前存在的那一条')
+  const scopedDoc = await readMemo('sess-allow')
+  check(scopedDoc.groups[0].items[0].done === true && scopedDoc.groups[1].items[0].done === false, '本轮新写入的同文本条目不被牵连')
+  const blocked = await updateMemoItems('sess-allow', { items: [{ text: '刷新页面手测自动收起' }], allowIds: [] })
+  check(blocked.updated === 0 && blocked.unmatchedTotal === 1, '白名单为空时不勾任何条目（等价于关闭自动回收）')
 
   const updateTool = createMemoUpdateTool({})
   check(updateTool.name === 'memo_update', '更新工具名')
