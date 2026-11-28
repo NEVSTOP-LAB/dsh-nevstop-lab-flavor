@@ -268,6 +268,25 @@ try {
   check(MEMO_DEFAULT_PROMPT.includes('候选只来自'), '提取指令限定审查候选来自输入清单')
   check(MEMO_PROMPT.includes('Add (`memo_add`)') && MEMO_PROMPT.includes('Review (`memo_update`)'), '注入提示分新增与审查两段')
   check(MEMO_PROMPT.includes('closing checklist above is the exception'), '注入提示写明结尾清单不适用合并')
+  check(MEMO_DEFAULT_PROMPT.includes('自指的过程说明不要收'), '提取指令排除自指过程说明')
+  check(MEMO_PROMPT.includes('your own process'), '注入提示排除自指过程说明')
+  const recallPair = [
+    { id: 'm_recall', turn: 1, text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' },
+  ]
+  check(
+    matchResolved(
+      ['job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。'],
+      recallPair,
+    ).length === 1,
+    '自动回收在 0.8 门槛下接受同义改写',
+  )
+  check(
+    !similarMemoItemStrict(
+      'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events',
+      'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。',
+    ),
+    '跨轮取代仍沿用 0.88 的严格门槛',
+  )
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
