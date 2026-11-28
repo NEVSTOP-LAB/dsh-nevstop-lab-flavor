@@ -12,6 +12,7 @@ import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
 import { DEFAULT_PROMPT as MEMO_DEFAULT_PROMPT } from '../../lib/memo/extract.js'
+import { MEMO_PROMPT } from '../../lib/memo/prompt.js'
 import { similarMemoItemStrict } from '../../lib/memo/merge.js'
 import { collectText } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
@@ -237,7 +238,13 @@ try {
   )
   check(strictMiss.length === 0, '自动回收不会因为换措辞而勾掉条目')
   check(MEMO_DEFAULT_PROMPT.includes('宁缺勿滥'), '提取指令写明宁缺勿滥')
-  check(MEMO_DEFAULT_PROMPT.includes('callout 卡片'), '提取指令写明 callout 卡片同样可回收')
+  check(MEMO_DEFAULT_PROMPT.includes('Callout 卡片'), '提取指令写明 callout 卡片同样可回收')
+  check(MEMO_DEFAULT_PROMPT.includes('## 新增') && MEMO_DEFAULT_PROMPT.includes('## 审查'), '提取指令分新增与审查两段')
+  check(MEMO_DEFAULT_PROMPT.includes('不适用于这类清单'), '提取指令保留「宁少勿多不适用于结尾清单」的例外')
+  check(MEMO_DEFAULT_PROMPT.includes('原文开头'), '提取指令要求照抄条目原文开头')
+  check(MEMO_DEFAULT_PROMPT.includes('候选只来自'), '提取指令限定审查候选来自输入清单')
+  check(MEMO_PROMPT.includes('Add (`memo_add`)') && MEMO_PROMPT.includes('Review (`memo_update`)'), '注入提示分新增与审查两段')
+  check(MEMO_PROMPT.includes('closing checklist above is the exception'), '注入提示写明结尾清单不适用合并')
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
