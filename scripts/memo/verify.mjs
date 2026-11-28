@@ -303,6 +303,16 @@ try {
     { text: '等到下一轮时，观察新组是否标成「(新一轮)」', callout: 'NOTE' },
   ])
   check(plansOnly.items.length === 0 && plansOnly.dropped.length === 2, '整条都是助手计划时丢弃并留日志')
+  const childPlans = stripAssistantPlans([
+    { text: '下一步', children: [{ text: '下一轮我会观察 `_extract.log`' }, { text: '你需要刷新页面确认' }] },
+  ])
+  check(childPlans.items.length === 1 && childPlans.items[0].children.length === 1, '清单子项里的计划句同样被剔除')
+  check(childPlans.items[0].children[0].text === '你需要刷新页面确认', '清单里给用户的子项原样保留')
+  const planParent = stripAssistantPlans([
+    { text: '拿到 PASS 我再更新 PR', children: [{ text: '你需要把插件切回 git tag' }] },
+  ])
+  check(planParent.items.length === 1 && planParent.items[0].text === '你需要把插件切回 git tag', '父项是计划时子项提升上来')
+  check(assistantPlanSentence('下一轮观察 X 是否出现'), '下一轮观察的观察项判为计划')
   const recallPair = [
     { id: 'm_recall', turn: 1, text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' },
   ]
@@ -511,6 +521,33 @@ try {
   check(supersededByMain.superseded === 1, '主会话的相似旧条目照常被取代')
   const subLeafAfter = supersededByMain.doc.groups[1].items[0].children[0]
   check(subLeafAfter.done === false, '子代理叶子不参与跨轮取代、仍保持未完成')
+
+  // 0.17.15 写入的子代理父节点没有结构标记：读回时按标题与子节点推断，旧数据同样受保护。
+  const legacySubagentDoc = {
+    version: 2,
+    sessionId: 'sess-subagent-legacy',
+    groups: [
+      { turn: 1, prompt: '', items: [{ id: 'm_main2', text: '刷新页面手测自动收起', done: false, source: 'agent', children: [] }] },
+      {
+        turn: 2,
+        prompt: '',
+        items: [{
+          id: 'm_sub2',
+          text: '子代理(reviewer)',
+          done: false,
+          source: 'agent',
+          children: [{ id: 'm_child2', text: '刷新页面手测自动收起（客户端没有浏览器）', done: false, source: 'agent', children: [] }],
+        }],
+      },
+    ],
+  }
+  const legacyStored = await writeMemo('sess-subagent-legacy', legacySubagentDoc)
+  check(legacyStored.groups[1].items[0].subagent === true, '旧版子代理父节点读回时补上结构标记')
+  const legacyDedupe = dedupeMemoItems(legacyStored)
+  check(legacyDedupe.count === 0 && legacyStored.groups[0].items[0].done === false, '旧版子代理子树同样不参与机械去重')
+  const legacyOpen = openMemoItems(legacyStored)
+  check(legacyOpen.some((item) => item.text.includes('客户端没有浏览器') && item.subagent === true), '清单里的子代理条目带归属标记')
+  check(legacyOpen.some((item) => item.text === '刷新页面手测自动收起' && item.subagent !== true), '主会话条目不带归属标记')
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
