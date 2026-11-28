@@ -7,7 +7,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { addMemoItems, copyMemo, countMemo, dedupeMemoItems, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, resolveMemoItems, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { addMemoItems, captureSignature, copyMemo, countMemo, dedupeMemoItems, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, resolveMemoItems, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
@@ -337,15 +337,40 @@ try {
   check(readTurn(emptyTurnSession).turn === 0, '零轮次按未识别处理')
 
   await addMemoItems('sess-turn-fallback', { turn: 3, prompt: 'p3', items: [{ text: '第三轮事项' }] })
-  const fallbackAdd = await addMemoItems('sess-turn-fallback', { turn: 0, prompt: '', items: [{ text: '压缩后的事项' }] })
+  const fallbackAdd = await addMemoItems('sess-turn-fallback', { turn: 0, prompt: '压缩后的提示', items: [{ text: '压缩后的事项' }] })
   check(fallbackAdd.doc.groups.length === 2, '轮次缺失时新开一组而不是并入旧组')
   const fallbackGroup = fallbackAdd.doc.groups[1]
   check(fallbackGroup.turn === 4, '新一组的编号接在现有最大轮次之后')
-  check(fallbackGroup.prompt === '(新一轮)', '新一组标注「(新一轮)」')
+  check(fallbackGroup.newTurn === true, '提示词非空时合成组仍带标记')
+  check(fallbackGroup.prompt === '压缩后的提示', '合成组保留原提示词，不用标记覆盖')
   check(fallbackGroup.items.some((item) => item.text === '压缩后的事项'), '轮次缺失的条目照常写入')
-  check(fallbackAdd.doc.groups[0].turn === 3 && fallbackAdd.doc.groups[0].items.length === 1, '旧轮次保持原样')
-  const firstFallback = await addMemoItems('sess-turn-fallback2', { turn: 0, prompt: '', items: [{ text: '首条事项' }] })
-  check(firstFallback.doc.groups[0].turn === 1 && firstFallback.doc.groups[0].prompt === '(新一轮)', '没有历史轮次时从第 1 轮开始并标注')
+  check(fallbackAdd.newTurn === true && fallbackAdd.turn === 4, '写入结果带回合成的轮次与标记')
+  check(fallbackAdd.doc.groups[0].turn === 3 && fallbackAdd.doc.groups[0].newTurn !== true, '旧的真实轮次不被标成合成组')
+  const fallbackReread = await readMemo('sess-turn-fallback')
+  check(fallbackReread.groups[1].newTurn === true, '合成标记写入文件并在重读后保留')
+  // 真实轮次恰好用到合成组占过的编号：合成组让位，真假轮次不混在一组。
+  const reclaimed = await addMemoItems('sess-turn-fallback', { turn: 4, prompt: '真正的第四轮', items: [{ text: '真实第四轮事项' }] })
+  const realGroup = reclaimed.doc.groups.find((group) => group.turn === 4)
+  check(realGroup !== undefined && realGroup.newTurn !== true, '真实轮次占用同号时新建真实组而不是并入合成组')
+  check(realGroup !== undefined && realGroup.items.some((item) => item.text === '真实第四轮事项'), '真实条目落在真实组里')
+  const shiftedGroup = reclaimed.doc.groups.find((group) => group.newTurn === true)
+  check(shiftedGroup !== undefined && shiftedGroup.turn > 4, '被占号的合成组顺延到更高编号')
+  check(shiftedGroup !== undefined && shiftedGroup.items.some((item) => item.text === '压缩后的事项'), '合成组的条目留在合成组里')
+  check(flattenMemoItems(reclaimed.doc).filter((row) => row.newTurn === true).length === 1, '摊平列表标出合成组的行')
+  const emptyPromptAdd = await addMemoItems('sess-turn-fallback3', { turn: 0, prompt: '', items: [{ text: '首条事项' }] })
+  check(emptyPromptAdd.doc.groups[0].turn === 1 && emptyPromptAdd.doc.groups[0].newTurn === true, '没有历史轮次时从第 1 组开始并标记')
+  await writeMemo('sess-turn-legacy', {
+    version: 2,
+    sessionId: 'sess-turn-legacy',
+    groups: [{ turn: 7, prompt: '(新一轮)', items: [{ text: '旧版合成组条目' }] }],
+  })
+  const legacyDoc = await readMemo('sess-turn-legacy')
+  check(legacyDoc.groups[0].newTurn === true && legacyDoc.groups[0].prompt === '', '旧版写进提示词的标记读回时按合成组处理')
+  check(flattenMemoItems(legacyDoc)[0].newTurn === true, '旧版合成组的行同样带标记')
+  check(captureSignature(4, 'x'.repeat(60)) === captureSignature(4, 'x'.repeat(60)), '同一回复的签名稳定')
+  check(captureSignature(4, 'x'.repeat(60)) !== captureSignature(5, 'x'.repeat(60)), '轮次不同则签名不同')
+  check(captureSignature(4, 'x'.repeat(60)) !== captureSignature(4, 'y'.repeat(60)), '回复不同则签名不同')
+  check(captureSignature(0, 'ab') === '0|2|ab', '签名格式为轮次|长度|前缀')
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
