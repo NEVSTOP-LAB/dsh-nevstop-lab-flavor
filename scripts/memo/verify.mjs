@@ -7,7 +7,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { addMemoItems, copyMemo, countMemo, openMemoItems, readMemo, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { addMemoItems, copyMemo, countMemo, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
@@ -15,7 +15,7 @@ import { collectText } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
 import { extractOpenItems } from '../../lib/memo/openitems.js'
 import { mergeMemoItems } from '../../lib/memo/merge.js'
-import { createMemoUpdateTool } from '../../lib/memo/tool.js'
+import { createMemoReadTool, createMemoUpdateTool } from '../../lib/memo/tool.js'
 
 const home = join(process.cwd(), '.tmp', 'memo-verify')
 rmSync(home, { recursive: true, force: true })
@@ -555,6 +555,53 @@ try {
   check(updateTool.output.schema.required.includes('open'), '更新工具返回未完成清单')
   check(updateTool.output.schema.required.includes('openTotal'), '更新工具返回未完成总数')
   check(updateTool.output.schema.required.includes('unmatchedTotal'), '更新工具返回未匹配总数')
+
+  const flatSeed = await addMemoItems('sess-flat', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '父项', children: ['子项一', '子项二'] }, { text: '独立项' }],
+  })
+  const flatRows = flattenMemoItems(flatSeed.doc)
+  check(flatRows.length === 4, '摊平列表含父项与子项')
+  check(flatRows[0].depth === 0 && flatRows[0].text === '父项', '父项在前、深度为 0')
+  check(flatRows[1].depth === 1 && flatRows[1].text === '子项一', '子项深度为 1')
+  check(typeof flatRows[0].id === 'string' && flatRows[0].id !== '', '摊平列表带条目 id')
+
+  writeFileSync(join(memoRoot(), '_extract.log'), 'a\nb\nc\n', 'utf8')
+  const tailLog = await readExtractLog(2)
+  check(tailLog.length === 2 && tailLog[1] === 'c', '读取诊断日志尾部')
+  check((await readExtractLog(0)).length === 0, '不传行数时不读日志')
+
+  const readTool = createMemoReadTool({})
+  check(readTool.name === 'memo_read', '只读工具名')
+  check(readTool.output.schema.required.includes('items'), '只读工具返回条目列表')
+  check(readTool.output.schema.required.includes('log'), '只读工具返回日志字段')
+
+  const readExec = { agent: { session: { id: 'sess-flat', seq: 0, snapshotEvents: () => [] } } }
+  const readResult = await readTool.execute({ limit: 2, unfinishedOnly: true }, readExec)
+  check(readResult.rowTotal === 4 && readResult.items.length === 2, '只读工具按 limit 截断并给出匹配总数')
+  check(readResult.items.every((row) => row.done !== true), '只读工具能按未完成筛选')
+  const readRender = readTool.output.render({}, readResult)
+  check(readRender[0].text.includes('showing 2/4'), '只读工具渲染给出已显示/总数')
+  check(readRender[0].text.includes('more row(s) not shown'), '只读工具渲染提示未显示的行数')
+  const readByTurn = await readTool.execute({ turn: 1 }, { agent: { session: { id: 'sess-flat', seq: 0, snapshotEvents: () => [] } } })
+  check(readByTurn.rowTotal === 4, '只读工具按轮次筛选')
+  await addMemoItems('sess-flat', { turn: 2, prompt: 'p2', items: [{ text: '第二轮独立项' }] })
+  const readTurn1 = await readTool.execute({ turn: 1 }, readExec)
+  const readTurn2 = await readTool.execute({ turn: 2 }, readExec)
+  check(readTurn1.rowTotal === 4 && readTurn2.rowTotal === 1, '按轮次筛选真的生效')
+  const readCountsOnly = await readTool.execute({ limit: 0 }, readExec)
+  check(readCountsOnly.rowTotal === 5 && readCountsOnly.items.length === 0, 'limit 为 0 时只回计数')
+  const longText = '很长的一条备忘'.repeat(40)
+  await addMemoItems('sess-flat', { turn: 3, prompt: 'p3', items: [{ text: longText }] })
+  const readClipped = await readTool.execute({ turn: 3 }, readExec)
+  check(readClipped.items[0] !== undefined && readClipped.items[0].text.length <= 201, '只读工具回灌的文本截成短引')
+  const emptyRead = await readTool.execute({}, { agent: { session: { id: 'sess-none', seq: 0, snapshotEvents: () => [] } } })
+  check(emptyRead.items.length === 0 && emptyRead.total === 0, '空会话返回空明细')
+
+  rmSync(join(memoRoot(), '_extract.log'), { force: true })
+  check((await readExtractLog(3)).length === 0, '日志文件不存在时返回空数组')
+  check(flattenMemoItems(emptyMemo('sess-empty')).length === 0, '空文档摊平为空数组')
 } finally {
   rmSync(home, { recursive: true, force: true })
 }
@@ -564,3 +611,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 console.log('memo verified')
+
