@@ -406,6 +406,7 @@ try {
 
   // 子代理收录：条目挂在「子代理(<名字>)」节点下，同名节点复用，重复条目跳过。
   check(subagentMemoLabel('reviewer') === '子代理(reviewer)', '子代理节点标题带名字')
+  check(subagentMemoLabel('reviewer/checker') === '子代理(checker)', '嵌套名字只取最后一段')
   check(subagentMemoLabel('') === '子代理', '没有名字时标题退回「子代理」')
   check(subagentMemoLabel('x'.repeat(80)).length === '子代理()'.length + 60, '子代理名字按 60 字截断')
   await addMemoItems('sess-sub', { turn: 1, prompt: '主会话', items: [{ text: '旧的待办条目' }] })
@@ -418,6 +419,10 @@ try {
   const subGroup = subFirst.doc.groups[1]
   const subParent = subGroup.items.find((node) => node.text === '子代理(reviewer)')
   check(subParent !== undefined && subParent.children.length === 2, '子代理条目包成一个父节点')
+  check(subParent !== undefined && subParent.subagent === true, '子代理父节点带结构性标记')
+  const subReread = await readMemo('sess-sub')
+  const rereadParent = subReread.groups[1].items.find((node) => node.text === '子代理(reviewer)')
+  check(rereadParent !== undefined && rereadParent.subagent === true, '结构性标记写入文件并在重读后保留')
   check(subParent !== undefined && subParent.children[1].children.length === 1, '子代理条目保留自己的子树')
   check(flattenMemoItems(subFirst.doc).some((row) => row.text === '审查项一' && row.depth === 1), '子代理条目在面板里比父节点低一层')
   const subSecond = await addMemoItems('sess-sub', {
@@ -462,6 +467,50 @@ try {
     { rootOf: () => ({ id: 'root-1', session: { id: 'root-1' } }), namesOf: () => { throw new Error('no resident') } },
   )
   check(fallbackTarget.subagent === true && fallbackTarget.name === '审查版本号规则', 'namesOf 不可用时退回会话里的描述')
+  check(captureSignature(3, 'ab', 'reviewer') === '3|2|ab|reviewer', '签名可带归属标记')
+  check(captureSignature(3, 'x'.repeat(60)) !== captureSignature(3, 'x'.repeat(60), 'reviewer'), '不同子代理的相同回复签名不同')
+
+  // 子代理子树不参与主会话的机械去重、跨轮取代与自动回收候选。
+  const subagentDoc = {
+    version: 2,
+    sessionId: 'sess-subagent-scope',
+    groups: [
+      {
+        turn: 1,
+        prompt: '',
+        items: [{ id: 'm_main', text: '刷新页面手测「勾完最后一条自动收起面板」', done: false, source: 'agent', children: [] }],
+      },
+      {
+        turn: 2,
+        prompt: '',
+        items: [{
+          id: 'm_sub',
+          text: '子代理(reviewer)',
+          done: false,
+          source: 'agent',
+          subagent: true,
+          children: [{ id: 'm_child', text: '刷新页面手测「勾完最后一条自动收起面板」（客户端没有浏览器）', done: false, source: 'agent', children: [] }],
+        }],
+      },
+    ],
+  }
+  const subagentStored = await writeMemo('sess-subagent-scope', subagentDoc)
+  const scopedDedupe = dedupeMemoItems(subagentStored)
+  check(scopedDedupe.count === 0, '机械去重跳过子代理子树')
+  check(subagentStored.groups[0].items[0].done === false, '主会话条目没有被子代理副本勾掉')
+  check(subagentStored.groups[1].items[0].children[0].done === false, '子代理条目保持未完成')
+  const openAllScopes = openMemoItems(subagentStored)
+  const openMainOnly = openMemoItems(subagentStored, { includeSubagents: false })
+  check(openAllScopes.length === 2, '默认清单包含子代理条目')
+  check(openMainOnly.length === 1 && openMainOnly[0].text.includes('勾完最后一条'), '主会话清单排除子代理叶子')
+  const supersededByMain = await addMemoItems('sess-subagent-scope', {
+    turn: 3,
+    prompt: '第三轮',
+    items: [{ text: '刷新页面手测「勾完最后一条自动收起面板」（客户端没有浏览器）' }],
+  })
+  check(supersededByMain.superseded === 1, '主会话的相似旧条目照常被取代')
+  const subLeafAfter = supersededByMain.doc.groups[1].items[0].children[0]
+  check(subLeafAfter.done === false, '子代理叶子不参与跨轮取代、仍保持未完成')
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
