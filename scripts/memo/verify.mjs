@@ -7,7 +7,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { addMemoItems, copyMemo, countMemo, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, resolveMemoItems, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { addMemoItems, copyMemo, countMemo, dedupeMemoItems, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, resolveMemoItems, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
@@ -642,6 +642,48 @@ try {
     '只勾被取代的子任务，父项仍未完成',
   )
 
+  await addMemoItems('sess-dup-pass', {
+    turn: 1,
+    prompt: 'p1',
+    items: [{ text: '备份 profile 并导出配置，升级后刷新页面并验证' }],
+  })
+  const dupSecond = await addMemoItems('sess-dup-pass', {
+    turn: 2,
+    prompt: 'p2',
+    items: [{ text: '备份 profile 并导出配置，升级后刷新页面' }],
+  })
+  check(dupSecond.superseded === 0, '短版不会在写入时取代旧条目')
+  const dupDoc = await readMemo('sess-dup-pass')
+  const dupResult = dedupeMemoItems(dupDoc)
+  check(dupResult.count === 1, '复查去重把同义改写的重复标为完成')
+  const dupOpen = [dupDoc.groups[0].items[0], dupDoc.groups[1].items[0]].filter((item) => item.done !== true)
+  check(dupOpen.length === 1 && !dupOpen[0].text.includes('并验证'), '复查去重保留最新的那条')
+  check(dupResult.merges[0].dropped.includes('并验证'), '复查去重记录被合并的旧条目原文')
+
+  await addMemoItems('sess-dup-pass2', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: '托盘「启动网关」要手动点，没有开机自启' }],
+  })
+  await addMemoItems('sess-dup-pass2', {
+    turn: 2,
+    prompt: 'p',
+    items: [{ text: '托盘「打开网页视图」要手动点，没有开机自启' }],
+  })
+  check(dedupeMemoItems(await readMemo('sess-dup-pass2')).count === 0, '点名对象不同的条目不被复查去重')
+
+  const sameTurnDoc = emptyMemo('sess-dup-same-turn')
+  sameTurnDoc.groups.push({
+    turn: 5,
+    prompt: 'p',
+    items: [
+      { id: 'm_same_short', text: '备份 profile 并导出配置，升级后刷新页面', done: false, source: 'agent', children: [] },
+      { id: 'm_same_long', text: '备份 profile 并导出配置，升级后刷新页面并验证回滚', done: false, source: 'agent', children: [] },
+    ],
+  })
+  const sameTurnResult = dedupeMemoItems(sameTurnDoc)
+  check(sameTurnResult.count === 1 && sameTurnResult.merges[0].kept.includes('并验证回滚'), '同轮并列时保留信息更全的那条')
+
   await addMemoItems('sess-deep-update', {
     turn: 1,
     prompt: 'p',
@@ -736,6 +778,8 @@ if (failures.length > 0) {
   process.exit(1)
 }
 console.log('memo verified')
+
+
 
 
 
