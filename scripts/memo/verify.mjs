@@ -7,7 +7,8 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { addMemoItems, captureSignature, copyMemo, countMemo, dedupeMemoItems, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, resolveMemoItems, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { addMemoItems, captureSignature, copyMemo, countMemo, dedupeMemoItems, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, resolveMemoItems, subagentMemoLabel, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { memoCaptureTargetOf } from '../../lib/memo/index.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
@@ -371,6 +372,65 @@ try {
   check(captureSignature(4, 'x'.repeat(60)) !== captureSignature(5, 'x'.repeat(60)), '轮次不同则签名不同')
   check(captureSignature(4, 'x'.repeat(60)) !== captureSignature(4, 'y'.repeat(60)), '回复不同则签名不同')
   check(captureSignature(0, 'ab') === '0|2|ab', '签名格式为轮次|长度|前缀')
+
+  // 子代理收录：条目挂在「子代理(<名字>)」节点下，同名节点复用，重复条目跳过。
+  check(subagentMemoLabel('reviewer') === '子代理(reviewer)', '子代理节点标题带名字')
+  check(subagentMemoLabel('') === '子代理', '没有名字时标题退回「子代理」')
+  check(subagentMemoLabel('x'.repeat(80)).length === '子代理()'.length + 60, '子代理名字按 60 字截断')
+  await addMemoItems('sess-sub', { turn: 1, prompt: '主会话', items: [{ text: '旧的待办条目' }] })
+  const subFirst = await addMemoItems('sess-sub', {
+    turn: 2,
+    prompt: '主会话第二轮',
+    items: [{ text: '审查项一' }, { text: '审查项二', children: ['子检查'] }],
+    parentText: '子代理(reviewer)',
+  })
+  const subGroup = subFirst.doc.groups[1]
+  const subParent = subGroup.items.find((node) => node.text === '子代理(reviewer)')
+  check(subParent !== undefined && subParent.children.length === 2, '子代理条目包成一个父节点')
+  check(subParent !== undefined && subParent.children[1].children.length === 1, '子代理条目保留自己的子树')
+  check(flattenMemoItems(subFirst.doc).some((row) => row.text === '审查项一' && row.depth === 1), '子代理条目在面板里比父节点低一层')
+  const subSecond = await addMemoItems('sess-sub', {
+    turn: 2,
+    prompt: '主会话第二轮',
+    items: [{ text: '审查项三' }, { text: '审查项一' }],
+    parentText: '子代理(reviewer)',
+  })
+  const parents = subSecond.doc.groups[1].items.filter((node) => node.text === '子代理(reviewer)')
+  check(parents.length === 1, '同一轮同名子代理复用同一个父节点')
+  check(parents[0].children.map((node) => node.text).join('|') === '审查项一|审查项二|审查项三', '后到的条目追加为子节点且重复的跳过')
+  check(subSecond.added === 1 && subSecond.skipped === 1, '子代理写入的计数只算新增的条目')
+  check(subSecond.superseded === 0, '子代理写入不勾掉主会话的旧条目')
+  const oldLeaf = subSecond.doc.groups[0].items.find((node) => node.text === '旧的待办条目')
+  check(oldLeaf !== undefined && oldLeaf.done === false, '主会话的旧条目保持未完成')
+  check(subSecond.doc.groups[1].items.length === 1, '子代理条目没有平铺到轮次里')
+
+  const assertRouted = memoCaptureTargetOf(
+    { id: 'child-1', header: { id: 'child-1', origin: 'subagent', parentSession: 'root-1' } },
+    { get: (id) => (id === 'child-1' ? { id: 'child-1', session: null } : undefined) },
+    { rootOf: () => ({ id: 'root-1', session: { id: 'root-1', header: { id: 'root-1' } } }), namesOf: () => ({ self: 'reviewer' }) },
+  )
+  check(assertRouted.subagent === true && assertRouted.session.id === 'root-1', '子代理收录归到根会话')
+  check(assertRouted.name === 'reviewer', '子代理名字取自 namesOf')
+  const plainTarget = memoCaptureTargetOf({ id: 'root-1', header: { id: 'root-1' } }, undefined, undefined)
+  check(plainTarget.subagent === false && plainTarget.name === '', '普通会话写自己的文件')
+  const noRoot = memoCaptureTargetOf(
+    { id: 'child-2', header: { id: 'child-2', origin: 'subagent' } },
+    { get: () => undefined },
+    { rootOf: () => ({ id: 'root-1', session: { id: 'root-1' } }), namesOf: () => ({ self: 'x' }) },
+  )
+  check(noRoot.subagent === false, '取不到代理时退回写自己的文件')
+  const childWithDescriptor = {
+    id: 'child-3',
+    header: { id: 'child-3', origin: 'subagent' },
+    seq: 3,
+    snapshotEvents: () => [{ type: 'subagent/descriptor', data: { label: '审查版本号规则' } }],
+  }
+  const fallbackTarget = memoCaptureTargetOf(
+    childWithDescriptor,
+    { get: () => ({ id: 'child-3' }) },
+    { rootOf: () => ({ id: 'root-1', session: { id: 'root-1' } }), namesOf: () => { throw new Error('no resident') } },
+  )
+  check(fallbackTarget.subagent === true && fallbackTarget.name === '审查版本号规则', 'namesOf 不可用时退回会话里的描述')
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
