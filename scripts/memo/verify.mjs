@@ -194,6 +194,20 @@ try {
   check(withResolved.items.length === 1, '提取结果保留新条目')
   check(withResolved.resolved.length === 2, '提取结果带出已处理条目')
   check(parseExtractionResult('{"items":[]}').resolved.length === 0, '没有 resolved 字段时为空')
+  check(parseExtractionResult('{"items":[]}').duplicates.length === 0, '没有 duplicates 字段时为空')
+  const withDuplicates = parseExtractionResult('{"items":[],"resolved":[],"duplicates":["待你处理的仍是两件"]}')
+  check(withDuplicates.duplicates.length === 1, '提取结果带出重复条目')
+  check(MEMO_DEFAULT_PROMPT.includes('## 去重'), '提取指令含去重段')
+  const duplicateTargets = matchResolved(
+    ['待你处理的仍是两件'],
+    [{ id: 'm_dup_fixture', turn: 11, text: '待你处理的仍是两件' }],
+  )
+  check(duplicateTargets.length === 1 && duplicateTargets[0].id === 'm_dup_fixture', '重复条目对齐到真实条目 id')
+  const doubleResolve = await addMemoItems('sess-double-resolve', { turn: 1, prompt: 'p', items: [{ text: '同一件事的旧条目' }] })
+  const doubleOpen = openMemoItems(doubleResolve.doc)
+  const firstResolve = await resolveMemoItems('sess-double-resolve', { ids: doubleOpen.map((item) => item.id) })
+  const secondResolve = await resolveMemoItems('sess-double-resolve', { ids: doubleOpen.map((item) => item.id) })
+  check(firstResolve.updated === 1 && secondResolve.updated === 0 && secondResolve.openTotal === 0, '同一 id 被重复勾选是幂等的')
 
   const openForInput = Array.from({ length: 25 }, (_, index) => ({ turn: index + 1, text: `未完成条目 ${index + 1}` }))
   const withOpen = extractionInput('这轮的提示', '回复正文', openForInput)
