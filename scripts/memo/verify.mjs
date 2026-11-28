@@ -11,6 +11,7 @@ import { addMemoItems, copyMemo, countMemo, dedupeMemoItems, emptyMemo, flattenM
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
+import { readTurn } from '../../lib/memo/turn.js'
 import { DEFAULT_PROMPT as MEMO_DEFAULT_PROMPT } from '../../lib/memo/extract.js'
 import { MEMO_PROMPT } from '../../lib/memo/prompt.js'
 import { similarMemoItemStrict, supersedesMemoText } from '../../lib/memo/merge.js'
@@ -287,6 +288,64 @@ try {
     ),
     '跨轮取代仍沿用 0.88 的严格门槛',
   )
+  const recallItems = [
+    { id: 'm_recall2', turn: 1, text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' },
+  ]
+  const paraphraseText = [
+    'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。',
+  ]
+  check(matchResolved(paraphraseText, recallItems).length === 1, '自动回收按 0.8 对齐')
+  check(matchResolved(paraphraseText, recallItems, 0.88).length === 0, '模型判定的重复仍按 0.88 对齐')
+
+  const bestHit = matchResolved(['备份 profile 并导出配置，升级后刷新页面'], [
+    { id: 'm_long', turn: 1, text: '备份 profile 并导出配置，升级后刷新页面并验证回滚' },
+    { id: 'm_exact', turn: 2, text: '备份 profile 并导出配置，升级后刷新页面' },
+  ])
+  check(bestHit.length === 1 && bestHit[0].id === 'm_exact', '精确文本不会被更早的包含项遮蔽')
+
+  const turnStartSession = {
+    seq: 3,
+    snapshotEvents: () => [
+      { type: 'turn/start', data: { turn: 5 } },
+      { type: 'user/message', data: { source: { kind: 'user' }, content: [{ type: 'text', text: '第五轮提示' }] } },
+      { type: 'turn/end', data: { turn: 5 } },
+    ],
+  }
+  const turnStartRead = readTurn(turnStartSession)
+  check(turnStartRead.turn === 5 && turnStartRead.prompt === '第五轮提示', '正常回合按 turn/start 归组')
+  const compactedSession = {
+    seq: 2,
+    snapshotEvents: () => [
+      { type: 'turn/end', data: { turn: 7 } },
+      { type: 'user/message', data: { source: { kind: 'user' }, content: [{ type: 'text', text: '压缩后的提示' }] } },
+    ],
+  }
+  const compactedRead = readTurn(compactedSession)
+  check(compactedRead.turn === 8 && compactedRead.prompt === '压缩后的提示', '压缩后没有 turn/start 时接在上一轮之后')
+  const staleStartSession = {
+    seq: 4,
+    snapshotEvents: () => [
+      { type: 'turn/start', data: { turn: 5 } },
+      { type: 'user/message', data: { source: { kind: 'user' }, content: [{ type: 'text', text: '旧提示' }] } },
+      { type: 'turn/end', data: { turn: 5 } },
+      { type: 'user/message', data: { source: { kind: 'user' }, content: [{ type: 'text', text: '新提示' }] } },
+    ],
+  }
+  const staleStartRead = readTurn(staleStartSession)
+  check(staleStartRead.turn === 6 && staleStartRead.prompt === '新提示', '残留上一轮 turn/start 时仍归到当前轮')
+  const emptyTurnSession = { seq: 1, snapshotEvents: () => [{ type: 'turn/end', data: { turn: 0 } }] }
+  check(readTurn(emptyTurnSession).turn === 0, '零轮次按未识别处理')
+
+  await addMemoItems('sess-turn-fallback', { turn: 3, prompt: 'p3', items: [{ text: '第三轮事项' }] })
+  const fallbackAdd = await addMemoItems('sess-turn-fallback', { turn: 0, prompt: '', items: [{ text: '压缩后的事项' }] })
+  check(fallbackAdd.doc.groups.length === 2, '轮次缺失时新开一组而不是并入旧组')
+  const fallbackGroup = fallbackAdd.doc.groups[1]
+  check(fallbackGroup.turn === 4, '新一组的编号接在现有最大轮次之后')
+  check(fallbackGroup.prompt === '(新一轮)', '新一组标注「(新一轮)」')
+  check(fallbackGroup.items.some((item) => item.text === '压缩后的事项'), '轮次缺失的条目照常写入')
+  check(fallbackAdd.doc.groups[0].turn === 3 && fallbackAdd.doc.groups[0].items.length === 1, '旧轮次保持原样')
+  const firstFallback = await addMemoItems('sess-turn-fallback2', { turn: 0, prompt: '', items: [{ text: '首条事项' }] })
+  check(firstFallback.doc.groups[0].turn === 1 && firstFallback.doc.groups[0].prompt === '(新一轮)', '没有历史轮次时从第 1 轮开始并标注')
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
@@ -811,6 +870,7 @@ if (failures.length > 0) {
   process.exit(1)
 }
 console.log('memo verified')
+
 
 
 
