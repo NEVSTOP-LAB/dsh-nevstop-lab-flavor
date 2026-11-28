@@ -7,10 +7,12 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { addMemoItems, copyMemo, countMemo, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
+import { addMemoItems, copyMemo, countMemo, emptyMemo, flattenMemoItems, openMemoItems, readExtractLog, readMemo, resolveMemoItems, toggleMemoNode, updateMemoItems, writeMemo, memoRoot } from '../../lib/memo/store.js'
 import { extractCallouts } from '../../lib/memo/callouts.js'
 import { parseExtraction } from '../../lib/memo/extract.js'
 import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
+import { DEFAULT_PROMPT as MEMO_DEFAULT_PROMPT } from '../../lib/memo/extract.js'
+import { similarMemoItemStrict } from '../../lib/memo/merge.js'
 import { collectText } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
 import { extractOpenItems } from '../../lib/memo/openitems.js'
@@ -205,9 +207,37 @@ try {
 
   const matchedResolved = matchResolved(
     ['刷新页面手测自动收起', '完全无关的一条'],
-    [{ turn: 2, text: '刷新页面手测自动收起（面板是否收起）' }],
+    [{ id: 'm_fixture', turn: 2, text: '刷新页面手测自动收起（面板是否收起）' }],
   )
-  check(matchedResolved.length === 1 && matchedResolved[0].includes('刷新页面手测自动收起'), '已处理条目对齐到真实未完成条目')
+  check(matchedResolved.length === 1 && matchedResolved[0].text.includes('刷新页面手测自动收起'), '已处理条目对齐到真实未完成条目')
+  check(typeof matchedResolved[0].id === 'string' && matchedResolved[0].id !== '', '对齐结果带条目 id')
+
+  check(
+    similarMemoItemStrict('刷新页面手测自动收起', '刷新页面手测自动收起（面板是否收起）'),
+    '严格判定接受包含关系',
+  )
+  check(
+    !similarMemoItemStrict(
+      '托盘「启动网关」尚未自动拉起网页视图，现在是两步',
+      '托盘「启动网关」没有自动拉起网页视图，目前是两步操作。',
+    ),
+    '严格判定不接受换措辞',
+  )
+  check(
+    !similarMemoItemStrict(
+      'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events',
+      'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。',
+    ),
+    '严格判定不接受覆盖率不足的改写',
+  )
+  check(similarMemoItemStrict('备份后再升级。', '备份后再升级'), '严格判定接受逐字相同')
+  const strictMiss = matchResolved(
+    ['托盘「启动网关」没有自动拉起网页视图，目前是两步操作。'],
+    [{ id: 'm_fixture2', turn: 1, text: '托盘「启动网关」尚未自动拉起网页视图，现在是两步' }],
+  )
+  check(strictMiss.length === 0, '自动回收不会因为换措辞而勾掉条目')
+  check(MEMO_DEFAULT_PROMPT.includes('宁缺勿滥'), '提取指令写明宁缺勿滥')
+  check(MEMO_DEFAULT_PROMPT.includes('callout 卡片'), '提取指令写明 callout 卡片同样可回收')
 
   const okStream = (async function* () {
     yield { type: 'text-delta', text: 'hello' }
@@ -270,8 +300,27 @@ try {
   })
   const resolveOpen = openMemoItems(resolveSeed.doc)
   const resolveTargets = matchResolved(['刷新页面手测自动收起'], resolveOpen)
-  const resolveApplied = await updateMemoItems('sess-resolve', { items: resolveTargets.map((text) => ({ text })) })
+  const resolveApplied = await resolveMemoItems('sess-resolve', { ids: resolveTargets.map((entry) => entry.id) })
   check(resolveApplied.updated === 1 && resolveApplied.unfinished === 1, '自动回收只勾掉命中的那一条')
+
+  // 严格判定不命中时，落地也不能按宽松相似再匹配一次：两条同义改写的旧条目只留另一条未勾。
+  await addMemoItems('sess-strict-land', {
+    turn: 1,
+    prompt: 'p',
+    items: [{ text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' }],
+  })
+  await addMemoItems('sess-strict-land', {
+    turn: 2,
+    prompt: 'p',
+    items: [{ text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流（插件的 /run/<id>/events 已经有了，没接进 job 落盘）。' }],
+  })
+  const strictLandOpen = openMemoItems(await readMemo('sess-strict-land'))
+  const strictLandTargets = matchResolved(['job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events'], strictLandOpen)
+  check(strictLandTargets.length === 1, '严格判定只命中逐字那条')
+  const strictLandApplied = await resolveMemoItems('sess-strict-land', { ids: strictLandTargets.map((entry) => entry.id) })
+  const strictLandDoc = await readMemo('sess-strict-land')
+  check(strictLandApplied.updated === 1, '按 id 落地只勾一条')
+  check(strictLandDoc.groups[0].items[0].done === true && strictLandDoc.groups[1].items[0].done === false, '同义改写的旧条目不会被连带勾掉')
 
   const ordered = orderByAppearance([{ text: 'C' }, { text: 'A' }, { text: 'B' }], '先做 A，然后 B，最后 C。')
   check(ordered.map((item) => item.text).join('') === 'ABC', '按文中首次出现位置排序')
@@ -611,4 +660,5 @@ if (failures.length > 0) {
   process.exit(1)
 }
 console.log('memo verified')
+
 
