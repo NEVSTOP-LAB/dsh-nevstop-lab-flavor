@@ -13,7 +13,7 @@ import { parseExtraction } from '../../lib/memo/extract.js'
 import { extractionInput, matchResolved, parseExtractionResult } from '../../lib/memo/extract.js'
 import { DEFAULT_PROMPT as MEMO_DEFAULT_PROMPT } from '../../lib/memo/extract.js'
 import { MEMO_PROMPT } from '../../lib/memo/prompt.js'
-import { similarMemoItemStrict } from '../../lib/memo/merge.js'
+import { similarMemoItemStrict, supersedesMemoText } from '../../lib/memo/merge.js'
 import { collectText } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
 import { extractOpenItems } from '../../lib/memo/openitems.js'
@@ -232,6 +232,15 @@ try {
     '严格判定不接受覆盖率不足的改写',
   )
   check(similarMemoItemStrict('备份后再升级。', '备份后再升级'), '严格判定接受逐字相同')
+  check(supersedesMemoText('备份后再升级。', '备份后再升级'), '跨轮取代接受逐字相同')
+  check(
+    supersedesMemoText('备份 profile 并导出配置，升级后刷新页面', '备份 profile 并导出配置，升级后刷新页面并验证'),
+    '跨轮取代接受信息更多的写法',
+  )
+  check(
+    !supersedesMemoText('托盘「启动网关」要手动点，没有开机自启', '托盘「打开网页视图」要手动点，没有开机自启'),
+    '点名不同对象时即使更长也不取代',
+  )
   const strictMiss = matchResolved(
     ['托盘「启动网关」没有自动拉起网页视图，目前是两步操作。'],
     [{ id: 'm_fixture2', turn: 1, text: '托盘「启动网关」尚未自动拉起网页视图，现在是两步' }],
@@ -568,10 +577,70 @@ try {
   check(readOnly.updated === 0 && readOnly.open.length === 1, '只读调用返回未完成清单')
   check(readFileSync(readOnlyFile, 'utf8') === readOnlyBefore, '只读调用不写盘')
 
-  await addMemoItems('sess-cross', { turn: 1, prompt: 'p1', items: [{ text: '整理提交说明与 PR 描述' }] })
-  await addMemoItems('sess-cross', { turn: 2, prompt: 'p2', items: [{ text: '整理提交说明与 PR 描述' }] })
+  const crossFirst = await addMemoItems('sess-cross', { turn: 1, prompt: 'p1', items: [{ text: '整理提交说明与 PR 描述' }] })
+  const crossSecond = await addMemoItems('sess-cross', { turn: 2, prompt: 'p2', items: [{ text: '整理提交说明与 PR 描述' }] })
+  check(crossFirst.superseded === 0 && crossSecond.superseded === 1, '更早轮次的同一条被新写法取代')
+  const crossDoc = await readMemo('sess-cross')
+  check(crossDoc.groups[0].items[0].done === true && crossDoc.groups[1].items[0].done === false, '跨轮重复只留最新一条未完成')
   const cross = await updateMemoItems('sess-cross', { items: [{ text: '整理提交说明与 PR 描述' }] })
-  check(cross.updated === 2 && cross.unfinished === 0, '同一文本跨轮一次全部勾掉')
+  check(cross.updated === 1 && cross.unfinished === 0, '再勾一次把最新那条也勾掉')
+
+  // 换措辞的近似说法不触发跨轮取代，避免误勾。
+  await addMemoItems('sess-supersede-keep', {
+    turn: 1,
+    prompt: 'p1',
+    items: [{ text: '托盘「启动网关」尚未自动拉起网页视图，现在是两步' }],
+  })
+  const superKeep = await addMemoItems('sess-supersede-keep', {
+    turn: 2,
+    prompt: 'p2',
+    items: [{ text: '托盘「启动网关」没有自动拉起网页视图，目前是两步操作。' }],
+  })
+  check(superKeep.superseded === 0, '换措辞不触发跨轮取代')
+  check((await readMemo('sess-supersede-keep')).groups[0].items[0].done === false, '旧条目保持未完成')
+
+  await addMemoItems('sess-sup-keep-long', {
+    turn: 1,
+    prompt: 'p1',
+    items: [{ text: '备份 profile 并导出配置，升级后刷新页面' }],
+  })
+  const shortNew = await addMemoItems('sess-sup-keep-long', {
+    turn: 2,
+    prompt: 'p2',
+    items: [{ text: '备份 profile 并导出配置' }],
+  })
+  check(shortNew.superseded === 0, '更短的新写法不取代旧条目')
+  check((await readMemo('sess-sup-keep-long')).groups[0].items[0].done === false, '长版旧条目保持未完成')
+
+  await addMemoItems('sess-sup-parent', {
+    turn: 1,
+    prompt: 'p1',
+    items: [{ text: '还没做的', children: ['补齐 CHANGELOG', '跑 npm run check'] }],
+  })
+  const bareNew = await addMemoItems('sess-sup-parent', { turn: 2, prompt: 'p2', items: [{ text: '还没做的' }] })
+  check(bareNew.superseded === 0, '裸标题不取代带子任务的旧父项')
+  const supParentDoc = await readMemo('sess-sup-parent')
+  check(
+    supParentDoc.groups[0].items[0].done === false && supParentDoc.groups[0].items[0].children.every((child) => child.done === false),
+    '旧父项与子任务都保持未完成',
+  )
+
+  await addMemoItems('sess-sup-leaf', {
+    turn: 1,
+    prompt: 'p1',
+    items: [{ text: '还没做的', children: ['刷新页面手测自动收起面板', '跑 npm run check'] }],
+  })
+  const leafNew = await addMemoItems('sess-sup-leaf', {
+    turn: 2,
+    prompt: 'p2',
+    items: [{ text: '刷新页面手测自动收起面板' }],
+  })
+  check(leafNew.superseded === 1, '子任务级重复也能被取代')
+  const supLeafDoc = await readMemo('sess-sup-leaf')
+  check(
+    supLeafDoc.groups[0].items[0].children[0].done === true && supLeafDoc.groups[0].items[0].done === false,
+    '只勾被取代的子任务，父项仍未完成',
+  )
 
   await addMemoItems('sess-deep-update', {
     turn: 1,
@@ -594,7 +663,7 @@ try {
   })
   const allowOpen = openMemoItems(allowSeed.doc)
   check(typeof allowOpen[0].id === 'string' && allowOpen[0].id !== '', '未完成清单带条目 id')
-  await addMemoItems('sess-allow', { turn: 2, prompt: 'p', items: [{ text: '刷新页面手测自动收起（面板是否收起）' }] })
+  await addMemoItems('sess-allow', { turn: 2, prompt: 'p', items: [{ text: '刷新页面手测自动收起（面板收起是否正常）' }] })
   const scoped = await updateMemoItems('sess-allow', {
     items: [{ text: '刷新页面手测自动收起' }],
     allowIds: allowOpen.map((item) => item.id),
@@ -667,5 +736,6 @@ if (failures.length > 0) {
   process.exit(1)
 }
 console.log('memo verified')
+
 
 
