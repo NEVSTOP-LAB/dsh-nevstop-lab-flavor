@@ -1,6 +1,6 @@
 {
   "name": "dsh-nevstop-lab-flavor",
-  "version": "0.17.15",
+  "version": "0.17.16",
   "description": "让 DSH 更贴合 NEVSTOP-LAB 使用习惯的本地化定制插件，各项定制按需开启。",
   "keywords": [
     "dsh",
@@ -52,7 +52,7 @@
     "dsh": ">=0.2.1-rc.0 <0.3.0-0"
   },
   "scripts": {
-    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/balance/index.js && node --check lib/balance/config.js && node --check lib/memo/index.js && node --check lib/memo/store.js && node --check lib/memo/route.js && node --check lib/memo/tool.js && node --check lib/memo/turn.js && node --check lib/memo/prompt.js && node --check lib/memo/callouts.js && node --check lib/memo/extract.js && node --check lib/memo/openitems.js && node --check lib/memo/merge.js && node --check scripts/hero/render.mjs && node scripts/icons/verify.mjs && node scripts/memo/verify.mjs",
+    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/balance/index.js && node --check lib/balance/config.js && node --check lib/memo/index.js && node --check lib/memo/store.js && node --check lib/memo/route.js && node --check lib/memo/tool.js && node --check lib/memo/turn.js && node --check lib/memo/prompt.js && node --check lib/memo/callouts.js && node --check lib/memo/extract.js && node --check lib/memo/openitems.js && node --check lib/memo/merge.js && node --check lib/memo/plans.js && node --check scripts/hero/render.mjs && node scripts/icons/verify.mjs && node scripts/memo/verify.mjs",
     "hero": "node scripts/hero/render.mjs"
   },
   "peerDependencies": {

@@ -20,6 +20,7 @@ import { collectText } from '../../lib/memo/extract.js'
 import { orderByAppearance } from '../../lib/memo/extract.js'
 import { extractOpenItems } from '../../lib/memo/openitems.js'
 import { mergeMemoItems } from '../../lib/memo/merge.js'
+import { assistantPlanSentence, stripAssistantPlans } from '../../lib/memo/plans.js'
 import { createMemoReadTool, createMemoUpdateTool } from '../../lib/memo/tool.js'
 
 const home = join(process.cwd(), '.tmp', 'memo-verify')
@@ -272,6 +273,36 @@ try {
   check(MEMO_PROMPT.includes('closing checklist above is the exception'), '注入提示写明结尾清单不适用合并')
   check(MEMO_DEFAULT_PROMPT.includes('自指的过程说明不要收'), '提取指令排除自指过程说明')
   check(MEMO_PROMPT.includes('your own process'), '注入提示排除自指过程说明')
+  check(MEMO_PROMPT.includes('Ask who acts before writing'), '注入提示要求先判断「谁来做」')
+  check(MEMO_DEFAULT_PROMPT.includes('先问「谁来做」'), '提取指令要求先判断「谁来做」')
+  const planSentences = [
+    '- 下一轮我会看 `_extract.log` 里的 turn fallback',
+    '等到下一轮时，观察新组是否标成「(新一轮)」',
+    '拿到 reviewer 的 PASS 我再更新 PR #40',
+    '如果这一轮结束后面板里出现「(新一轮)」组，就说明新代码在跑',
+    'I will check the log next turn',
+  ]
+  for (const sentence of planSentences) check(assistantPlanSentence(sentence), '助手计划句被识别：' + sentence.slice(0, 14))
+  const userSentences = [
+    '剩下的两条都需要你动手',
+    '如果仍显示成普通「第 N 轮」，需要重启一次 DSH 再看',
+    '合并 PR #40 后把本机插件切回 git tag 并打 v0.17.15',
+    '如果这一轮结束后面板里出现「(新一轮)」组，你需要刷新页面确认',
+  ]
+  for (const sentence of userSentences) check(!assistantPlanSentence(sentence), '用户待办不被当成计划：' + sentence.slice(0, 14))
+  const mixedPlan = stripAssistantPlans([
+    { text: '安装过程中 remove_bundle 返回过一次 not-removable。下一轮我会看 `_extract.log` 是否出现 turn fallback。', callout: 'NOTE' },
+    { text: '要不要把相邻的（新一轮）组合并成一个，等你看到实际效果再定。', callout: 'WARNING' },
+  ])
+  check(mixedPlan.items.length === 2, '混写条目保留用户相关部分')
+  check(mixedPlan.items[0].text.includes('remove_bundle') && !mixedPlan.items[0].text.includes('turn fallback'), '混写条目只去掉计划句')
+  check(mixedPlan.items[0].callout === 'NOTE', '去噪保留 callout 类型')
+  check(mixedPlan.items[1].text.includes('等你看到实际效果'), '用户决定类的句子原样保留')
+  const plansOnly = stripAssistantPlans([
+    '拿到 reviewer 的 PASS 我再更新 PR #40 与 issue #39 的说明。',
+    { text: '等到下一轮时，观察新组是否标成「(新一轮)」', callout: 'NOTE' },
+  ])
+  check(plansOnly.items.length === 0 && plansOnly.dropped.length === 2, '整条都是助手计划时丢弃并留日志')
   const recallPair = [
     { id: 'm_recall', turn: 1, text: 'job 的 run.jsonl 现在是历史快照，不是运行中的实时事件流；要直播需接 /run/<id>/events' },
   ]
